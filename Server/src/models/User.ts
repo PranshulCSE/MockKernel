@@ -30,7 +30,7 @@ const userSchema = new Schema<IUser>(
     googleId: { type: String, unique: true, sparse: true },
     role: { type: String, enum: USER_ROLES, required: true },
   },
-  { timestamps: true }
+  { timestamps: true, discriminatorKey: 'role' }
 );
 
 export const User = model<IUser>('User', userSchema);
