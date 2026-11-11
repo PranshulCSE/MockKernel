@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { Eye, EyeOff, Lock, Mail, User } from 'lucide-react'
 import { AuthError } from '../../api/auth'
 import { useAuthStore } from '../../store/authStore'
