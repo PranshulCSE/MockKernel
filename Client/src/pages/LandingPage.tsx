@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { ArrowRight, Code2, Mic } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { GlassCard, VerdictBadge } from '../components/ui'
