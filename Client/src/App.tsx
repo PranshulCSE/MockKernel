@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Route, Routes } from 'react-router'
 import { GuestOnly, RequireAuth } from './components/auth/RouteGuards'
 import { AppLayout } from './components/layout/AppLayout'
 import InterviewPage from './pages/InterviewPage'
