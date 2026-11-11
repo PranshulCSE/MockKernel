@@ -1,4 +1,3 @@
-import { Terminal } from 'lucide-react'
 
 export function Logo() {
   return (
