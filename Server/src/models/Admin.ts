@@ -1,6 +1,6 @@
 import { Schema } from 'mongoose';
 import type { HydratedDocument, Types } from 'mongoose';
-import { User, type IUser } from './User';
+import { User, type IUser } from './User.js';
 
 export interface IAdmin extends IUser {
   role: 'admin';

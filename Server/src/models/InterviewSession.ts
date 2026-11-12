@@ -1,6 +1,6 @@
 import { Schema, model } from 'mongoose';
 import type { HydratedDocument, Types } from 'mongoose';
-import { DIFFICULTIES, type Difficulty } from './Problem';
+import { DIFFICULTIES, type Difficulty } from './Problem.js';
 
 export const INTERVIEW_STATUSES = [
   'in_progress',
