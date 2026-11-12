@@ -1,7 +1,16 @@
 // Barrel file — ensures all Mongoose models are registered before use.
 // Import this once in the app entry point (Index.ts).
 
-export { User, type IUser, type UserDocument, type UserRole, USER_ROLES } from './User.js';
+export {
+  User,
+  Student,
+  type IUser,
+  type IStudent,
+  type UserDocument,
+  type StudentDocument,
+  type UserRole,
+  USER_ROLES,
+} from './User.js';
 export { Admin, type IAdmin, type AdminDocument } from './Admin.js';
 export { SuperAdmin, type ISuperAdmin, type SuperAdminDocument } from './SuperAdmin.js';
 export {
