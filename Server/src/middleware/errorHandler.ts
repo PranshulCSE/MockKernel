@@ -83,6 +83,21 @@ export function errorHandler(
     return;
   }
 
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: unknown }).code === 11000
+  ) {
+    res.status(409).json({
+      error: {
+        code: 'DUPLICATE_KEY',
+        message: 'A record with this unique value already exists.',
+      },
+    });
+    return;
+  }
+
   console.error('Unhandled error:', error);
   res.status(500).json({
     error: {

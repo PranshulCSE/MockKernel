@@ -12,7 +12,7 @@ import {
 } from '../models/Problem.js';
 import { TestCase, type TestCaseDocument } from '../models/TestCase.js';
 import { Contest } from '../models/Contest.js';
-import { getAuthUser } from '../middleware/mockAuth.js';
+import { getAuthUser } from '../middleware/auth.js';
 import { HttpError } from '../utils/http.js';
 
 type TestCaseInput = {
