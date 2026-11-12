@@ -2,6 +2,7 @@ import express from "express";
 // Register all Mongoose models (discriminators need evaluation order)
 import './models/index.js';
 import dotenv from "dotenv";
+import { connectDB } from "./config/db.js";
 import {
   adminProblemRouter,
   publicProblemRouter,
@@ -28,6 +29,15 @@ app.use("/api/admin/problems", adminProblemRouter);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+async function startServer(): Promise<void> {
+  await connectDB();
+
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
+
+startServer().catch((error) => {
+  console.error("Failed to start server:", error);
+  process.exit(1);
 });

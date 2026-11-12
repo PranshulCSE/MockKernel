@@ -5,10 +5,13 @@
   "license": "ISC",
   "author": "",
   "type": "module",
-  "main": "index.js",
+  "main": "dist/Index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
+    "start": "node dist/Index.js",
+    "dev": "tsx watch src/Index.ts",
+    "build": "tsc",
+    "db:init": "tsx src/scripts/initDb.ts",
+    "db:init:prod": "node dist/scripts/initDb.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
@@ -25,6 +28,7 @@
     "@types/node": "^26.6.6",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }
 }
