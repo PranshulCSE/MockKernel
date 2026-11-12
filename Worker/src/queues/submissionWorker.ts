@@ -13,6 +13,32 @@ dotenv.config();
 
 const QUEUE_NAME = process.env.SUBMISSION_QUEUE_NAME || 'submission-queue';
 const CONCURRENCY = Number(process.env.WORKER_CONCURRENCY) || 5;
+const TIMEOUT_GUARD_MS = Number(process.env.WORKER_TIMEOUT_GUARD_MS) || 10_000;
+
+class TimeoutGuardError extends Error {
+  constructor(ms: number) {
+    super(`Execution exceeded ${ms}ms Timeout Guard`);
+    this.name = 'TimeoutGuardError';
+  }
+}
+
+async function runWithTimeoutGuard<T>(
+  promise: Promise<T>,
+  ms: number
+): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new TimeoutGuardError(ms)), ms);
+        timer.unref?.();
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 export interface SubmissionJobTestCase {
   testCaseId: string;
@@ -71,13 +97,16 @@ export const processSubmissionJob = async (job: Job<SubmissionJobData>): Promise
     for (const tc of executionList) {
       console.log(`[Worker] Executing test case ${tc.testCaseId} for submission ${submissionId}...`);
 
-      const execResult = await judge0Service.executeTestCase(
-        submission.sourceCode,
-        submission.language,
-        tc.input,
-        tc.expectedOutput,
-        cpuTimeLimit,
-        memoryLimit
+      const execResult = await runWithTimeoutGuard(
+        judge0Service.executeTestCase(
+          submission.sourceCode,
+          submission.language,
+          tc.input,
+          tc.expectedOutput,
+          cpuTimeLimit,
+          memoryLimit
+        ),
+        TIMEOUT_GUARD_MS
       );
 
       lastToken = execResult.token;
@@ -134,6 +163,13 @@ export const processSubmissionJob = async (job: Job<SubmissionJobData>): Promise
     console.log(`[Worker] Completed Submission ${submissionId} with Verdict: ${overallVerdict}`);
   } catch (error: any) {
     console.error(`[Worker] Error executing submission ${submissionId}:`, error);
+
+    if (error instanceof TimeoutGuardError) {
+      submission.verdict = 'TLE';
+      submission.compileOutput = error.message;
+      await submission.save();
+      return;
+    }
 
     submission.verdict = 'INTERNAL_ERROR';
     submission.compileOutput = error.message || 'Worker execution failure';
