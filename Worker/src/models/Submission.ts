@@ -28,6 +28,7 @@ export type SubmissionVerdict = (typeof SUBMISSION_VERDICTS)[number];
 export interface ITestCaseResult {
   testCase: Types.ObjectId;
   passed: boolean;
+  verdict?: SubmissionVerdict;
   runtime?: number;
   memory?: number;
   stdout?: string;
@@ -68,6 +69,7 @@ const testCaseResultSchema = new Schema<ITestCaseResult>(
       required: true,
     },
     passed: { type: Boolean, required: true },
+    verdict: { type: String, enum: SUBMISSION_VERDICTS },
     runtime: { type: Number },
     memory: { type: Number },
     stdout: { type: String },
@@ -78,7 +80,7 @@ const testCaseResultSchema = new Schema<ITestCaseResult>(
 
 const plagiarismResultSchema = new Schema<IPlagiarismResult>(
   {
-    flagged: { type: Boolean, required: true },
+    flagged: { type: Boolean, required: true, default: false },
     similarity: { type: Number },
     matchedSubmission: {
       type: Schema.Types.ObjectId,
@@ -130,5 +132,6 @@ const submissionSchema = new Schema<ISubmission>(
 submissionSchema.index({ user: 1, createdAt: -1 });
 submissionSchema.index({ problem: 1, createdAt: -1 });
 submissionSchema.index({ contest: 1, verdict: 1 });
+submissionSchema.index({ contest: 1, problem: 1, verdict: 1 });
 
 export const Submission = model<ISubmission>('Submission', submissionSchema);

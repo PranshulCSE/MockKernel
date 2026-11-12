@@ -97,6 +97,7 @@ export const processSubmissionJob = async (job: Job<SubmissionJobData>): Promise
       testCaseResults.push({
         testCase: new Types.ObjectId(tc.testCaseId),
         passed: execResult.passed,
+        verdict: execResult.verdict,
         runtime: execResult.runtime,
         memory: execResult.memory,
         stdout: execResult.stdout,
