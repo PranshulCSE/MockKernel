@@ -1,6 +1,6 @@
 import { Schema, model } from 'mongoose';
 import type { HydratedDocument, Types } from 'mongoose';
-import { DIFFICULTIES, type Difficulty } from './Problem';
+import { DIFFICULTIES, type Difficulty } from './Problem.js';
 
 export const INTERVIEW_STATUSES = [
   'in_progress',
@@ -8,6 +8,13 @@ export const INTERVIEW_STATUSES = [
   'abandoned',
 ] as const;
 export type InterviewStatus = (typeof INTERVIEW_STATUSES)[number];
+
+export const INTERVIEW_TOPICS = [
+  'Operating Systems',
+  'DBMS',
+  'Data Structures',
+] as const;
+export type InterviewTopic = (typeof INTERVIEW_TOPICS)[number];
 
 export interface IInterviewQuestion {
   question: string;
@@ -22,7 +29,7 @@ export interface IInterviewSession {
   user: Types.ObjectId;
   difficulty: Difficulty;
   questionCount: number;
-  topics: string[];
+  topics: InterviewTopic[];
   status: InterviewStatus;
   questions: IInterviewQuestion[];
   overallScore?: number;
@@ -39,9 +46,9 @@ const interviewQuestionSchema = new Schema<IInterviewQuestion>(
   {
     question: { type: String, required: true },
     answer: { type: String },
-    score: { type: Number },
+    score: { type: Number, min: 0, max: 10 },
     feedback: { type: String },
-    askedAt: { type: Date, required: true },
+    askedAt: { type: Date, required: true, default: Date.now },
     answeredAt: { type: Date },
   },
   { _id: false }
@@ -55,13 +62,24 @@ const interviewSessionSchema = new Schema<IInterviewSession>(
       required: true,
     },
     difficulty: { type: String, enum: DIFFICULTIES, required: true },
-    questionCount: { type: Number, required: true },
-    topics: [{ type: String }],
-    status: { type: String, enum: INTERVIEW_STATUSES, required: true },
+    questionCount: { type: Number, required: true, min: 1, max: 20 },
+    topics: {
+      type: [{ type: String, enum: INTERVIEW_TOPICS }],
+      validate: {
+        validator: (v: InterviewTopic[]) => v.length > 0,
+        message: 'At least one topic is required',
+      },
+    },
+    status: {
+      type: String,
+      enum: INTERVIEW_STATUSES,
+      required: true,
+      default: 'in_progress',
+    },
     questions: { type: [interviewQuestionSchema], default: [] },
-    overallScore: { type: Number },
+    overallScore: { type: Number, min: 0, max: 10 },
     feedback: { type: String },
-    startedAt: { type: Date, required: true },
+    startedAt: { type: Date, required: true, default: Date.now },
     completedAt: { type: Date },
   },
   { timestamps: true }

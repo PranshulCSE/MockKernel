@@ -18,7 +18,6 @@ export interface IContest {
   endTime: Date;
   status: ContestStatus;
   createdBy: Types.ObjectId;
-  participants: Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,8 +31,8 @@ const contestProblemSchema = new Schema<IContestProblem>(
       ref: 'Problem',
       required: true,
     },
-    points: { type: Number, required: true },
-    order: { type: Number, required: true },
+    points: { type: Number, required: true, min: 1 },
+    order: { type: Number, required: true, min: 0 },
   },
   { _id: false }
 );
@@ -42,19 +41,37 @@ const contestSchema = new Schema<IContest>(
   {
     title: { type: String, required: true, trim: true },
     description: { type: String, required: true },
-    problems: { type: [contestProblemSchema], required: true },
+    problems: {
+      type: [contestProblemSchema],
+      validate: {
+        validator: (v: IContestProblem[]) => v.length > 0,
+        message: 'Contest must have at least one problem',
+      },
+    },
     startTime: { type: Date, required: true },
     endTime: { type: Date, required: true },
-    status: { type: String, enum: CONTEST_STATUSES, required: true },
+    status: {
+      type: String,
+      enum: CONTEST_STATUSES,
+      required: true,
+      default: 'draft',
+    },
     createdBy: {
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: true,
     },
-    participants: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   },
   { timestamps: true }
 );
+
+// participants moved to ContestParticipant model
+
+contestSchema.pre('validate', function () {
+  if (this.startTime && this.endTime && this.endTime <= this.startTime) {
+    this.invalidate('endTime', 'endTime must be after startTime');
+  }
+});
 
 contestSchema.index({ status: 1, startTime: 1 });
 contestSchema.index({ createdBy: 1 });
