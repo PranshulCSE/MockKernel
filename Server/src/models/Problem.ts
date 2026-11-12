@@ -33,16 +33,20 @@ const problemSchema = new Schema<IProblem>(
     statement: { type: String, required: true },
     difficulty: { type: String, enum: DIFFICULTIES, required: true },
     constraints: { type: String, required: true },
-    supportedLanguages: [
-      { type: String, enum: SUPPORTED_LANGUAGES, required: true },
-    ],
+    supportedLanguages: {
+      type: [{ type: String, enum: SUPPORTED_LANGUAGES }],
+      validate: {
+        validator: (v: SupportedLanguage[]) => v.length > 0,
+        message: 'At least one supported language is required',
+      },
+    },
     starterCode: { type: Schema.Types.Mixed },
     createdBy: {
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: true,
     },
-    isPublished: { type: Boolean, required: true },
+    isPublished: { type: Boolean, required: true, default: false },
   },
   { timestamps: true }
 );

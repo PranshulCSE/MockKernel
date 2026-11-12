@@ -21,15 +21,18 @@ const testCaseSchema = new Schema<ITestCase>(
       ref: 'Problem',
       required: true,
     },
-    input: { type: String, required: true },
+    // default: '' allows no-stdin problems (empty input is valid)
+    input: { type: String, default: '' },
     expectedOutput: { type: String, required: true },
-    isSample: { type: Boolean, required: true },
-    order: { type: Number, required: true },
+    isSample: { type: Boolean, required: true, default: false },
+    order: { type: Number, required: true, min: 0 },
     explanation: { type: String },
   },
   { timestamps: true }
 );
 
 testCaseSchema.index({ problem: 1, isSample: 1, order: 1 });
+// prevent duplicate order numbers within the same problem
+testCaseSchema.index({ problem: 1, order: 1 }, { unique: true });
 
 export const TestCase = model<ITestCase>('TestCase', testCaseSchema);
