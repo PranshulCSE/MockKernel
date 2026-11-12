@@ -3,7 +3,7 @@ import type { HydratedDocument, Types } from 'mongoose';
 import {
   SUPPORTED_LANGUAGES,
   type SupportedLanguage,
-} from './Problem';
+} from './Problem.js';
 
 export const SUBMISSION_MODES = ['run', 'submit'] as const;
 export type SubmissionMode = (typeof SUBMISSION_MODES)[number];
