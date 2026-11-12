@@ -1,32 +1,40 @@
-import mongoose from 'mongoose';
-import dotenv from 'dotenv';
-import { connectDB } from './config/db.js';
-import { redisConnection } from './config/redis.js';
+import { connectDB, disconnectDB } from './config/db.js';
+import { loadWorkerEnv, validateWorkerEnv } from './config/env.js';
+import { disconnectRedis, verifyRedisConnection } from './config/redis.js';
 import { createSubmissionWorker } from './queues/submissionWorker.js';
+import { getJudge0Service } from './services/judge0.js';
 
-dotenv.config();
+loadWorkerEnv();
 
-const SHUTDOWN_TIMEOUT_MS = 10000;
+const SHUTDOWN_TIMEOUT_MS = 10_000;
 
 async function bootstrap() {
   console.log('[Worker] Starting MockKernel Background Execution Worker...');
 
-  // 1. Establish Database Connection
-  await connectDB();
+  const env = validateWorkerEnv();
+  await connectDB(env.mongoUri);
+  await verifyRedisConnection();
 
-  // 2. Start BullMQ Submission Worker
+  const judge0Health = await getJudge0Service().checkHealth();
+  if (!judge0Health.ok) {
+    console.warn(
+      `[Worker] Judge0 health check warning (${env.judge0ApiUrl}): ${judge0Health.message ?? 'unreachable'}`
+    );
+  } else {
+    console.log(`[Worker] Judge0 reachable at ${env.judge0ApiUrl}`);
+  }
+
   const worker = createSubmissionWorker();
 
-  // 3. Graceful Shutdown Handlers
   let isShuttingDown = false;
-
   const handleShutdown = async (signal: string) => {
-    if (isShuttingDown) return;
+    if (isShuttingDown) {
+      return;
+    }
     isShuttingDown = true;
 
     console.log(`\n[Worker] Received ${signal}. Starting graceful shutdown...`);
 
-    // Safety timeout to prevent hanging process
     const forceExitTimer = setTimeout(() => {
       console.error('[Worker] Graceful shutdown timed out. Forcing process exit.');
       process.exit(1);
@@ -34,15 +42,9 @@ async function bootstrap() {
     forceExitTimer.unref();
 
     try {
-      console.log('[Worker] Closing BullMQ Worker (waiting for active jobs to complete)...');
       await worker.close();
-
-      console.log('[Worker] Closing Redis connection...');
-      await redisConnection.quit();
-
-      console.log('[Worker] Closing MongoDB connection...');
-      await mongoose.connection.close();
-
+      await disconnectRedis();
+      await disconnectDB();
       console.log('[Worker] All connections closed cleanly. Exiting.');
       process.exit(0);
     } catch (error) {
@@ -51,20 +53,17 @@ async function bootstrap() {
     }
   };
 
-  process.on('SIGINT', () => handleShutdown('SIGINT'));
-  process.on('SIGTERM', () => handleShutdown('SIGTERM'));
-
+  process.on('SIGINT', () => void handleShutdown('SIGINT'));
+  process.on('SIGTERM', () => void handleShutdown('SIGTERM'));
   process.on('unhandledRejection', (reason) => {
     console.error('[Worker] Unhandled Rejection:', reason);
-  });
-
-  process.on('uncaughtException', (error) => {
-    console.error('[Worker] Uncaught Exception:', error);
-    process.exit(1);
   });
 }
 
 bootstrap().catch((error) => {
-  console.error('[Worker] Failed to start worker:', error);
+  console.error(
+    '[Worker] Failed to start worker:',
+    error instanceof Error ? error.message : error
+  );
   process.exit(1);
 });

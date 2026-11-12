@@ -1,18 +1,17 @@
-import { Worker, Job } from 'bullmq';
+import { Job, UnrecoverableError, Worker } from 'bullmq';
 import { Types } from 'mongoose';
-import dotenv from 'dotenv';
-import { redisConnection } from '../config/redis.js';
+import { getWorkerEnvConfig } from '../config/env.js';
+import { getRedisConnection } from '../config/redis.js';
 import {
   Submission,
-  ITestCaseResult,
-  SubmissionVerdict,
+  type ITestCaseResult,
+  type SubmissionVerdict,
 } from '../models/Submission.js';
-import { judge0Service } from '../services/judge0.js';
-
-dotenv.config();
-
-const QUEUE_NAME = process.env.SUBMISSION_QUEUE_NAME || 'submission-queue';
-const CONCURRENCY = Number(process.env.WORKER_CONCURRENCY) || 5;
+import {
+  Judge0Error,
+  getJudge0Service,
+  type Judge0Service,
+} from '../services/judge0.js';
 
 export interface SubmissionJobTestCase {
   testCaseId: string;
@@ -22,56 +21,256 @@ export interface SubmissionJobTestCase {
 
 export interface SubmissionJobData {
   submissionId: string;
-  testCases?: SubmissionJobTestCase[];
+  testCases: SubmissionJobTestCase[];
   cpuTimeLimit?: number;
   memoryLimit?: number;
 }
 
+const TERMINAL_NON_RETRY_VERDICTS = new Set<SubmissionVerdict>([
+  'ACCEPTED',
+  'WRONG_ANSWER',
+  'TLE',
+  'RUNTIME_ERROR',
+  'COMPILE_ERROR',
+  'PLAGIARISM_FLAGGED',
+]);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 /**
- * Core processor for code execution jobs
+ * Strictly validates every field in a BullMQ submission job payload.
+ * Throws `UnrecoverableError` when malformed so invalid jobs never crash or loop retries.
  */
-export const processSubmissionJob = async (job: Job<SubmissionJobData>): Promise<void> => {
-  const { submissionId, testCases = [], cpuTimeLimit, memoryLimit } = job.data;
-
-  console.log(`[Worker] Processing Job ${job.id} for Submission: ${submissionId}`);
-
-  if (!Types.ObjectId.isValid(submissionId)) {
-    throw new Error(`Invalid submissionId: ${submissionId}`);
+export function validateSubmissionJobData(data: unknown): SubmissionJobData {
+  if (!isRecord(data)) {
+    throw new UnrecoverableError('Malformed job payload: data must be an object.');
   }
 
-  const submission = await Submission.findById(submissionId);
+  if (typeof data.submissionId !== 'string' || !Types.ObjectId.isValid(data.submissionId)) {
+    throw new UnrecoverableError(
+      `Malformed job payload: invalid submissionId "${String(data.submissionId)}".`
+    );
+  }
+
+  if (!Array.isArray(data.testCases) || data.testCases.length === 0) {
+    throw new UnrecoverableError(
+      'Malformed job payload: testCases must be a non-empty array.'
+    );
+  }
+
+  const seenTestCaseIds = new Set<string>();
+  const validatedTestCases: SubmissionJobTestCase[] = [];
+
+  for (let i = 0; i < data.testCases.length; i++) {
+    const tc = data.testCases[i];
+    if (!isRecord(tc)) {
+      throw new UnrecoverableError(
+        `Malformed job payload: testCases[${i}] must be an object.`
+      );
+    }
+
+    if (typeof tc.testCaseId !== 'string' || !Types.ObjectId.isValid(tc.testCaseId)) {
+      throw new UnrecoverableError(
+        `Malformed job payload: invalid testCaseId at testCases[${i}].`
+      );
+    }
+
+    if (seenTestCaseIds.has(tc.testCaseId)) {
+      throw new UnrecoverableError(
+        `Malformed job payload: duplicate testCaseId "${tc.testCaseId}".`
+      );
+    }
+    seenTestCaseIds.add(tc.testCaseId);
+
+    if (typeof tc.input !== 'string') {
+      throw new UnrecoverableError(
+        `Malformed job payload: testCases[${i}].input must be a string.`
+      );
+    }
+
+    if (typeof tc.expectedOutput !== 'string') {
+      throw new UnrecoverableError(
+        `Malformed job payload: testCases[${i}].expectedOutput must be a string.`
+      );
+    }
+
+    validatedTestCases.push({
+      testCaseId: tc.testCaseId,
+      input: tc.input,
+      expectedOutput: tc.expectedOutput,
+    });
+  }
+
+  let cpuTimeLimit: number | undefined;
+  if (data.cpuTimeLimit !== undefined) {
+    if (
+      typeof data.cpuTimeLimit !== 'number' ||
+      !Number.isFinite(data.cpuTimeLimit) ||
+      data.cpuTimeLimit <= 0 ||
+      data.cpuTimeLimit > 30
+    ) {
+      throw new UnrecoverableError(
+        'Malformed job payload: cpuTimeLimit must be a finite number in (0, 30].'
+      );
+    }
+    cpuTimeLimit = data.cpuTimeLimit;
+  }
+
+  let memoryLimit: number | undefined;
+  if (data.memoryLimit !== undefined) {
+    if (
+      typeof data.memoryLimit !== 'number' ||
+      !Number.isFinite(data.memoryLimit) ||
+      data.memoryLimit <= 0
+    ) {
+      throw new UnrecoverableError(
+        'Malformed job payload: memoryLimit must be a positive finite number.'
+      );
+    }
+    memoryLimit = data.memoryLimit;
+  }
+
+  return {
+    submissionId: data.submissionId,
+    testCases: validatedTestCases,
+    ...(cpuTimeLimit !== undefined ? { cpuTimeLimit } : {}),
+    ...(memoryLimit !== undefined ? { memoryLimit } : {}),
+  };
+}
+
+function buildOrderedResults(
+  testCases: SubmissionJobTestCase[],
+  resultByTestCaseId: Map<string, ITestCaseResult>
+): ITestCaseResult[] {
+  const ordered: ITestCaseResult[] = [];
+  for (const tc of testCases) {
+    const entry = resultByTestCaseId.get(tc.testCaseId);
+    if (entry) {
+      ordered.push(entry);
+    }
+  }
+  return ordered;
+}
+
+function summarizeResults(results: ITestCaseResult[]): {
+  overallVerdict: SubmissionVerdict;
+  maxRuntime: number;
+  maxMemory: number;
+} {
+  let overallVerdict: SubmissionVerdict = 'ACCEPTED';
+  let maxRuntime = 0;
+  let maxMemory = 0;
+
+  for (const r of results) {
+    if (r.runtime !== undefined && r.runtime > maxRuntime) {
+      maxRuntime = r.runtime;
+    }
+    if (r.memory !== undefined && r.memory > maxMemory) {
+      maxMemory = r.memory;
+    }
+    if (r.verdict === 'COMPILE_ERROR') {
+      overallVerdict = 'COMPILE_ERROR';
+      break;
+    }
+    if (r.verdict && r.verdict !== 'ACCEPTED' && overallVerdict === 'ACCEPTED') {
+      overallVerdict = r.verdict;
+    }
+  }
+
+  return { overallVerdict, maxRuntime, maxMemory };
+}
+
+/**
+ * Core processor for code execution jobs.
+ * Idempotent across retries and persists partial results safely.
+ */
+export const processSubmissionJob = async (
+  job: Pick<Job<SubmissionJobData>, 'id' | 'data'>,
+  deps: { judge0?: Judge0Service } = {}
+): Promise<void> => {
+  const rawSubmissionId =
+    isRecord(job.data) && typeof job.data.submissionId === 'string'
+      ? job.data.submissionId
+      : undefined;
+
+  let validated: SubmissionJobData;
+  try {
+    validated = validateSubmissionJobData(job.data);
+  } catch (err) {
+    if (rawSubmissionId && Types.ObjectId.isValid(rawSubmissionId)) {
+      await Submission.findByIdAndUpdate(rawSubmissionId, {
+        $set: {
+          verdict: 'INTERNAL_ERROR',
+          compileOutput:
+            err instanceof Error ? err.message : 'Malformed submission job payload.',
+        },
+      })
+        .exec()
+        .catch(() => {});
+    }
+    throw err;
+  }
+
+  const { submissionId, testCases, cpuTimeLimit, memoryLimit } = validated;
+  const judge0 = deps.judge0 ?? getJudge0Service();
+
+  console.log(`[Worker] Processing Job ${job.id ?? submissionId} for Submission: ${submissionId}`);
+
+  const submission = await Submission.findById(submissionId).exec();
   if (!submission) {
-    throw new Error(`Submission ${submissionId} not found in database`);
+    throw new UnrecoverableError(`Submission ${submissionId} not found in database.`);
   }
 
-  // Update status to RUNNING
-  submission.verdict = 'RUNNING';
-  await submission.save();
+  // Idempotency guard: do not re-evaluate or corrupt already-finished submissions.
+  if (TERMINAL_NON_RETRY_VERDICTS.has(submission.verdict)) {
+    console.log(
+      `[Worker] Submission ${submissionId} already finalized (${submission.verdict}); skipping duplicate job.`
+    );
+    return;
+  }
+
+  // Seed map with any completed non-error test cases from an earlier interrupted attempt.
+  const resultByTestCaseId = new Map<string, ITestCaseResult>();
+  if (Array.isArray(submission.testCaseResults)) {
+    for (const existing of submission.testCaseResults) {
+      if (existing.verdict && existing.verdict !== 'INTERNAL_ERROR') {
+        resultByTestCaseId.set(existing.testCase.toString(), {
+          testCase: existing.testCase,
+          passed: existing.passed,
+          verdict: existing.verdict,
+          runtime: existing.runtime,
+          memory: existing.memory,
+          stdout: existing.stdout,
+          stderr: existing.stderr,
+        });
+      }
+    }
+  }
+
+  await Submission.findByIdAndUpdate(submissionId, {
+    $set: { verdict: 'RUNNING' },
+  }).exec();
+
+  let compileOutput = submission.compileOutput;
+  let lastToken = submission.judge0Token;
 
   try {
-    const testCaseResults: ITestCaseResult[] = [];
-    let overallVerdict: SubmissionVerdict = 'ACCEPTED';
-    let maxRuntime = 0;
-    let maxMemory = 0;
-    let compileOutput: string | undefined;
-    let lastToken: string | undefined;
+    for (const tc of testCases) {
+      const prior = resultByTestCaseId.get(tc.testCaseId);
+      if (prior) {
+        if (prior.verdict === 'COMPILE_ERROR') {
+          break;
+        }
+        continue;
+      }
 
-    // If no test cases provided (e.g. ad-hoc run), execute once with empty input
-    const executionList =
-      testCases.length > 0
-        ? testCases
-        : [
-            {
-              testCaseId: new Types.ObjectId().toString(),
-              input: '',
-              expectedOutput: '',
-            },
-          ];
+      console.log(
+        `[Worker] Executing test case ${tc.testCaseId} for submission ${submissionId}...`
+      );
 
-    for (const tc of executionList) {
-      console.log(`[Worker] Executing test case ${tc.testCaseId} for submission ${submissionId}...`);
-
-      const execResult = await judge0Service.executeTestCase(
+      const execResult = await judge0.executeTestCase(
         submission.sourceCode,
         submission.language,
         tc.input,
@@ -81,20 +280,11 @@ export const processSubmissionJob = async (job: Job<SubmissionJobData>): Promise
       );
 
       lastToken = execResult.token;
-
-      if (execResult.compileOutput) {
+      if (execResult.compileOutput !== undefined) {
         compileOutput = execResult.compileOutput;
       }
 
-      if (execResult.runtime && execResult.runtime > maxRuntime) {
-        maxRuntime = execResult.runtime;
-      }
-
-      if (execResult.memory && execResult.memory > maxMemory) {
-        maxMemory = execResult.memory;
-      }
-
-      testCaseResults.push({
+      resultByTestCaseId.set(tc.testCaseId, {
         testCase: new Types.ObjectId(tc.testCaseId),
         passed: execResult.passed,
         verdict: execResult.verdict,
@@ -104,74 +294,95 @@ export const processSubmissionJob = async (job: Job<SubmissionJobData>): Promise
         stderr: execResult.stderr,
       });
 
-      // Compilation error stops subsequent test case execution immediately
+      const partialResults = buildOrderedResults(testCases, resultByTestCaseId);
+      await Submission.findByIdAndUpdate(submissionId, {
+        $set: {
+          testCaseResults: partialResults,
+          ...(lastToken ? { judge0Token: lastToken } : {}),
+          ...(compileOutput !== undefined ? { compileOutput } : {}),
+        },
+      }).exec();
+
       if (execResult.verdict === 'COMPILE_ERROR') {
-        overallVerdict = 'COMPILE_ERROR';
         break;
       }
-
-      // If any test case fails and overallVerdict is still ACCEPTED, reflect first failure
-      if (execResult.verdict !== 'ACCEPTED' && overallVerdict === 'ACCEPTED') {
-        overallVerdict = execResult.verdict;
-      }
     }
 
-    // Persist final submission state to MongoDB
-    submission.verdict = overallVerdict;
-    submission.runtime = maxRuntime;
-    submission.memory = maxMemory;
-    if (compileOutput) {
-      submission.compileOutput = compileOutput;
-    }
-    if (lastToken) {
-      submission.judge0Token = lastToken;
-    }
-    if (testCaseResults.length > 0) {
-      submission.testCaseResults = testCaseResults;
-    }
+    const finalResults = buildOrderedResults(testCases, resultByTestCaseId);
+    const { overallVerdict, maxRuntime, maxMemory } = summarizeResults(finalResults);
 
-    await submission.save();
-    console.log(`[Worker] Completed Submission ${submissionId} with Verdict: ${overallVerdict}`);
-  } catch (error: any) {
-    console.error(`[Worker] Error executing submission ${submissionId}:`, error);
+    await Submission.findByIdAndUpdate(submissionId, {
+      $set: {
+        verdict: overallVerdict,
+        runtime: maxRuntime,
+        memory: maxMemory,
+        testCaseResults: finalResults,
+        ...(lastToken ? { judge0Token: lastToken } : {}),
+        ...(compileOutput !== undefined ? { compileOutput } : {}),
+      },
+    }).exec();
 
-    submission.verdict = 'INTERNAL_ERROR';
-    submission.compileOutput = error.message || 'Worker execution failure';
-    await submission.save();
+    console.log(
+      `[Worker] Completed Submission ${submissionId} with Verdict: ${overallVerdict}`
+    );
+  } catch (error: unknown) {
+    const partialResults = buildOrderedResults(testCases, resultByTestCaseId);
+    const errorMessage =
+      error instanceof Error ? error.message : 'Worker execution failure';
 
+    console.error(`[Worker] Error executing submission ${submissionId}:`, errorMessage);
+
+    await Submission.findByIdAndUpdate(submissionId, {
+      $set: {
+        verdict: 'INTERNAL_ERROR',
+        ...(partialResults.length > 0 ? { testCaseResults: partialResults } : {}),
+        ...(compileOutput !== undefined
+          ? { compileOutput }
+          : { compileOutput: errorMessage }),
+        ...(lastToken ? { judge0Token: lastToken } : {}),
+      },
+    })
+      .exec()
+      .catch(() => {});
+
+    if (error instanceof Judge0Error && !error.retryable) {
+      throw new UnrecoverableError(error.message);
+    }
     throw error;
   }
 };
 
-/**
- * Initializes and starts the BullMQ Worker
- */
+/** Initializes and starts the BullMQ Worker. */
 export const createSubmissionWorker = (): Worker<SubmissionJobData> => {
+  const { submissionQueueName, workerConcurrency } = getWorkerEnvConfig();
+
   const worker = new Worker<SubmissionJobData>(
-    QUEUE_NAME,
+    submissionQueueName,
     async (job: Job<SubmissionJobData>) => {
       await processSubmissionJob(job);
     },
     {
-      connection: redisConnection,
-      concurrency: CONCURRENCY,
+      connection: getRedisConnection(),
+      concurrency: workerConcurrency,
     }
   );
 
   worker.on('ready', () => {
-    console.log(`[Worker] BullMQ Worker listening on queue "${QUEUE_NAME}" (concurrency: ${CONCURRENCY})`);
+    console.log(
+      `[Worker] BullMQ Worker listening on queue "${submissionQueueName}" (concurrency: ${workerConcurrency})`
+    );
   });
 
   worker.on('completed', (job: Job) => {
-    console.log(`[Worker] Job ${job.id} has completed successfully`);
+    console.log(`[Worker] Job ${job.id} completed successfully`);
   });
 
   worker.on('failed', (job: Job | undefined, err: Error) => {
-    console.error(`[Worker] Job ${job?.id} failed with error: ${err.message}`);
+    console.error(`[Worker] Job ${job?.id} failed: ${err.message}`);
   });
 
   worker.on('error', (err: Error) => {
-    console.error('[Worker] BullMQ Worker general error:', err);
+    console.error('[Worker] BullMQ Worker error:', err.message);
   });
 
   return worker;

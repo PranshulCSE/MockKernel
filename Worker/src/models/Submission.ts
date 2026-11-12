@@ -70,8 +70,8 @@ const testCaseResultSchema = new Schema<ITestCaseResult>(
     },
     passed: { type: Boolean, required: true },
     verdict: { type: String, enum: SUBMISSION_VERDICTS },
-    runtime: { type: Number },
-    memory: { type: Number },
+    runtime: { type: Number, min: 0 },
+    memory: { type: Number, min: 0 },
     stdout: { type: String },
     stderr: { type: String },
   },
@@ -81,7 +81,7 @@ const testCaseResultSchema = new Schema<ITestCaseResult>(
 const plagiarismResultSchema = new Schema<IPlagiarismResult>(
   {
     flagged: { type: Boolean, required: true, default: false },
-    similarity: { type: Number },
+    similarity: { type: Number, min: 0, max: 1 },
     matchedSubmission: {
       type: Schema.Types.ObjectId,
       ref: 'Submission',
@@ -119,9 +119,9 @@ const submissionSchema = new Schema<ISubmission>(
       required: true,
       default: 'PENDING',
     },
-    judge0Token: { type: String, sparse: true },
-    runtime: { type: Number },
-    memory: { type: Number },
+    judge0Token: { type: String, index: true, sparse: true },
+    runtime: { type: Number, min: 0 },
+    memory: { type: Number, min: 0 },
     compileOutput: { type: String },
     testCaseResults: { type: [testCaseResultSchema], default: undefined },
     plagiarism: { type: plagiarismResultSchema, default: undefined },

@@ -32,21 +32,46 @@ const contestProblemSchema = new Schema<IContestProblem>(
       required: true,
     },
     points: { type: Number, required: true, min: 1 },
-    order: { type: Number, required: true, min: 0 },
+    order: {
+      type: Number,
+      required: true,
+      min: 0,
+      validate: {
+        validator: Number.isInteger,
+        message: 'Problem order must be a non-negative integer',
+      },
+    },
   },
   { _id: false }
 );
 
 const contestSchema = new Schema<IContest>(
   {
-    title: { type: String, required: true, trim: true },
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+      minlength: [3, 'Title must be at least 3 characters long'],
+      maxlength: [150, 'Title cannot exceed 150 characters'],
+    },
     description: { type: String, required: true },
     problems: {
       type: [contestProblemSchema],
-      validate: {
-        validator: (v: IContestProblem[]) => v.length > 0,
-        message: 'Contest must have at least one problem',
-      },
+      required: true,
+      validate: [
+        {
+          validator: (v: IContestProblem[]) => Array.isArray(v) && v.length > 0,
+          message: 'Contest must have at least one problem',
+        },
+        {
+          validator: (v: IContestProblem[]) => {
+            const problemIds = new Set(v.map((p) => p.problem.toString()));
+            const orders = new Set(v.map((p) => p.order));
+            return problemIds.size === v.length && orders.size === v.length;
+          },
+          message: 'Contest problems must have unique problem IDs and unique order values',
+        },
+      ],
     },
     startTime: { type: Date, required: true },
     endTime: { type: Date, required: true },
@@ -64,8 +89,6 @@ const contestSchema = new Schema<IContest>(
   },
   { timestamps: true }
 );
-
-// participants moved to ContestParticipant model
 
 contestSchema.pre('validate', function () {
   if (this.startTime && this.endTime && this.endTime <= this.startTime) {

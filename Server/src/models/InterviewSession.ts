@@ -62,12 +62,23 @@ const interviewSessionSchema = new Schema<IInterviewSession>(
       required: true,
     },
     difficulty: { type: String, enum: DIFFICULTIES, required: true },
-    questionCount: { type: Number, required: true, min: 1, max: 20 },
+    questionCount: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 20,
+      validate: {
+        validator: Number.isInteger,
+        message: 'questionCount must be an integer between 1 and 20',
+      },
+    },
     topics: {
       type: [{ type: String, enum: INTERVIEW_TOPICS }],
+      required: true,
       validate: {
-        validator: (v: InterviewTopic[]) => v.length > 0,
-        message: 'At least one topic is required',
+        validator: (v: InterviewTopic[]) =>
+          Array.isArray(v) && v.length > 0 && new Set(v).size === v.length,
+        message: 'At least one unique topic is required',
       },
     },
     status: {
@@ -84,6 +95,15 @@ const interviewSessionSchema = new Schema<IInterviewSession>(
   },
   { timestamps: true }
 );
+
+interviewSessionSchema.pre('validate', function () {
+  if (this.questions && this.questionCount && this.questions.length > this.questionCount) {
+    this.invalidate('questions', 'questions cannot exceed questionCount');
+  }
+  if (this.completedAt && this.startedAt && this.completedAt < this.startedAt) {
+    this.invalidate('completedAt', 'completedAt cannot be earlier than startedAt');
+  }
+});
 
 interviewSessionSchema.index({ user: 1, createdAt: -1 });
 interviewSessionSchema.index({ status: 1 });

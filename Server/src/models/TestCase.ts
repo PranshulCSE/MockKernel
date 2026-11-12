@@ -21,11 +21,38 @@ const testCaseSchema = new Schema<ITestCase>(
       ref: 'Problem',
       required: true,
     },
-    // default: '' allows no-stdin problems (empty input is valid)
-    input: { type: String, default: '' },
-    expectedOutput: { type: String, required: true },
+    // Empty strings ('') are valid stdin/expectedOutput values in competitive programming.
+    input: {
+      type: String,
+      default: '',
+      validate: {
+        validator: (v: unknown) => typeof v === 'string',
+        message: 'input must be a string',
+      },
+    },
+    expectedOutput: {
+      type: String,
+      required: [
+        function (this: ITestCase): boolean {
+          return typeof this.expectedOutput !== 'string';
+        },
+        'expectedOutput is required',
+      ],
+      validate: {
+        validator: (v: unknown) => typeof v === 'string',
+        message: 'expectedOutput must be a string',
+      },
+    },
     isSample: { type: Boolean, required: true, default: false },
-    order: { type: Number, required: true, min: 0 },
+    order: {
+      type: Number,
+      required: true,
+      min: 0,
+      validate: {
+        validator: Number.isInteger,
+        message: 'order must be a non-negative integer',
+      },
+    },
     explanation: { type: String },
   },
   { timestamps: true }

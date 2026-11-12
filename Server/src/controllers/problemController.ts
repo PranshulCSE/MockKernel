@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
-import { isValidObjectId, Types } from 'mongoose';
-import type { QueryFilter } from 'mongoose';
+import { isValidObjectId, Types, type ClientSession, type QueryFilter } from 'mongoose';
+import { getAuthUser } from '../middleware/auth.js';
+import { Contest } from '../models/Contest.js';
 import {
   DIFFICULTIES,
   Problem,
@@ -11,9 +12,19 @@ import {
   type SupportedLanguage,
 } from '../models/Problem.js';
 import { TestCase, type TestCaseDocument } from '../models/TestCase.js';
-import { Contest } from '../models/Contest.js';
-import { getAuthUser } from '../middleware/mockAuth.js';
 import { HttpError } from '../utils/http.js';
+import {
+  escapeRegex,
+  getPagination,
+  hasOwn,
+  isRecord,
+  parsePaginationQuery,
+  readBoolean,
+  readInteger,
+  readQueryString,
+  readString,
+} from '../utils/request.js';
+import { runInTransaction } from '../utils/transaction.js';
 
 type TestCaseInput = {
   input: string;
@@ -41,87 +52,13 @@ type ListOptions = {
   filter: QueryFilter<IProblem>;
 };
 
-const DEFAULT_PAGE = 1;
-const DEFAULT_LIMIT = 20;
-const MAX_LIMIT = 100;
 const TITLE_MIN_LENGTH = 3;
 const TITLE_MAX_LENGTH = 150;
 const STATEMENT_MAX_LENGTH = 50_000;
 const CONSTRAINTS_MAX_LENGTH = 10_000;
 const TEST_CASE_TEXT_MAX_LENGTH = 1_000_000;
 const EXPLANATION_MAX_LENGTH = 10_000;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function hasOwn(record: Record<string, unknown>, key: string): boolean {
-  return Object.prototype.hasOwnProperty.call(record, key);
-}
-
-function readQueryString(value: unknown, field: string): string | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  if (typeof value !== 'string') {
-    throw new HttpError(
-      400,
-      'VALIDATION_ERROR',
-      `Query parameter "${field}" must be a single string value.`
-    );
-  }
-
-  return value.trim();
-}
-
-function readString(
-  value: unknown,
-  field: string,
-  options: { min?: number; max?: number; trim?: boolean } = {}
-): string {
-  if (typeof value !== 'string') {
-    throw new HttpError(400, 'VALIDATION_ERROR', `${field} must be a string.`);
-  }
-
-  const normalized = options.trim === false ? value : value.trim();
-  const min = options.min ?? 1;
-  const max = options.max ?? Number.POSITIVE_INFINITY;
-
-  if (normalized.length < min || normalized.length > max) {
-    throw new HttpError(
-      400,
-      'VALIDATION_ERROR',
-      `${field} must be between ${min} and ${max} characters.`
-    );
-  }
-
-  return normalized;
-}
-
-function readBoolean(value: unknown, field: string): boolean {
-  if (typeof value !== 'boolean') {
-    throw new HttpError(400, 'VALIDATION_ERROR', `${field} must be a boolean.`);
-  }
-
-  return value;
-}
-
-function readInteger(value: unknown, field: string, min: number): number {
-  if (
-    typeof value !== 'number' ||
-    !Number.isInteger(value) ||
-    value < min
-  ) {
-    throw new HttpError(
-      400,
-      'VALIDATION_ERROR',
-      `${field} must be an integer greater than or equal to ${min}.`
-    );
-  }
-
-  return value;
-}
+const STARTER_CODE_MAX_LENGTH = 50_000;
 
 function isSupportedLanguage(value: string): value is SupportedLanguage {
   return (SUPPORTED_LANGUAGES as readonly string[]).includes(value);
@@ -138,7 +75,6 @@ function parseDifficulty(value: unknown): Difficulty {
       `difficulty must be one of: ${DIFFICULTIES.join(', ')}.`
     );
   }
-
   return value as Difficulty;
 }
 
@@ -152,7 +88,6 @@ function parseSupportedLanguages(value: unknown): SupportedLanguage[] {
   }
 
   const result: SupportedLanguage[] = [];
-
   for (const language of value) {
     if (typeof language !== 'string' || !isSupportedLanguage(language)) {
       throw new HttpError(
@@ -161,7 +96,6 @@ function parseSupportedLanguages(value: unknown): SupportedLanguage[] {
         `supportedLanguages contains an unsupported language. Allowed values: ${SUPPORTED_LANGUAGES.join(', ')}.`
       );
     }
-
     if (result.includes(language)) {
       throw new HttpError(
         400,
@@ -169,10 +103,8 @@ function parseSupportedLanguages(value: unknown): SupportedLanguage[] {
         `supportedLanguages contains duplicate value "${language}".`
       );
     }
-
     result.push(language);
   }
-
   return result;
 }
 
@@ -203,7 +135,6 @@ function parseStarterCode(
         `starterCode contains an unsupported language "${language}".`
       );
     }
-
     if (!allowedLanguages.has(language)) {
       throw new HttpError(
         400,
@@ -211,15 +142,13 @@ function parseStarterCode(
         `starterCode language "${language}" is not present in supportedLanguages.`
       );
     }
-
-    if (typeof starterCode !== 'string') {
+    if (typeof starterCode !== 'string' || starterCode.length > STARTER_CODE_MAX_LENGTH) {
       throw new HttpError(
         400,
         'VALIDATION_ERROR',
-        `starterCode.${language} must be a string.`
+        `starterCode.${language} must be a string within ${STARTER_CODE_MAX_LENGTH} characters.`
       );
     }
-
     result[language] = starterCode;
   }
 
@@ -231,7 +160,9 @@ function parseTestCases(value: unknown): TestCaseInput[] {
     throw new HttpError(400, 'VALIDATION_ERROR', 'testCases must be an array.');
   }
 
-  return value.map((testCase, index) => {
+  const seenOrders = new Set<number>();
+
+  const parsed = value.map((testCase, index) => {
     if (!isRecord(testCase)) {
       throw new HttpError(
         400,
@@ -241,25 +172,35 @@ function parseTestCases(value: unknown): TestCaseInput[] {
     }
 
     const prefix = `testCases[${index}]`;
-    const input = readString(testCase.input, `${prefix}.input`, {
+    // Empty string ('') is valid for both input and expectedOutput.
+    const input = readString(testCase.input ?? '', `${prefix}.input`, {
+      min: 0,
       trim: false,
       max: TEST_CASE_TEXT_MAX_LENGTH,
     });
     const expectedOutput = readString(
       testCase.expectedOutput,
       `${prefix}.expectedOutput`,
-      { trim: false, max: TEST_CASE_TEXT_MAX_LENGTH }
+      { min: 0, trim: false, max: TEST_CASE_TEXT_MAX_LENGTH }
     );
     const isSample = readBoolean(testCase.isSample, `${prefix}.isSample`);
     const order = readInteger(testCase.order, `${prefix}.order`, 0);
 
-    let explanation: string | undefined;
-    if (hasOwn(testCase, 'explanation')) {
-      explanation = readString(
-        testCase.explanation,
-        `${prefix}.explanation`,
-        { min: 0, max: EXPLANATION_MAX_LENGTH }
+    if (seenOrders.has(order)) {
+      throw new HttpError(
+        400,
+        'VALIDATION_ERROR',
+        `Duplicate test case order ${order} in testCases.`
       );
+    }
+    seenOrders.add(order);
+
+    let explanation: string | undefined;
+    if (hasOwn(testCase, 'explanation') && testCase.explanation !== undefined) {
+      explanation = readString(testCase.explanation, `${prefix}.explanation`, {
+        min: 0,
+        max: EXPLANATION_MAX_LENGTH,
+      });
     }
 
     return {
@@ -270,6 +211,8 @@ function parseTestCases(value: unknown): TestCaseInput[] {
       ...(explanation !== undefined ? { explanation } : {}),
     };
   });
+
+  return parsed.sort((a, b) => a.order - b.order);
 }
 
 function parseProblemCreateInput(body: unknown): {
@@ -384,47 +327,8 @@ function parseProblemUpdateInput(
   return { input, testCases };
 }
 
-function parsePage(value: unknown): number {
-  const raw = readQueryString(value, 'page');
-
-  if (raw === undefined || raw === '') {
-    return DEFAULT_PAGE;
-  }
-
-  const page = Number(raw);
-  if (!Number.isInteger(page) || page < 1) {
-    throw new HttpError(400, 'VALIDATION_ERROR', 'page must be a positive integer.');
-  }
-
-  return page;
-}
-
-function parseLimit(value: unknown): number {
-  const raw = readQueryString(value, 'limit');
-
-  if (raw === undefined || raw === '') {
-    return DEFAULT_LIMIT;
-  }
-
-  const limit = Number(raw);
-  if (!Number.isInteger(limit) || limit < 1 || limit > MAX_LIMIT) {
-    throw new HttpError(
-      400,
-      'VALIDATION_ERROR',
-      `limit must be an integer between 1 and ${MAX_LIMIT}.`
-    );
-  }
-
-  return limit;
-}
-
-function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 function parseListOptions(req: Request, includeUnpublished: boolean): ListOptions {
-  const page = parsePage(req.query.page);
-  const limit = parseLimit(req.query.limit);
+  const { page, limit } = parsePaginationQuery(req.query as Record<string, unknown>);
   const filter: QueryFilter<IProblem> = {};
 
   if (!includeUnpublished) {
@@ -454,7 +358,6 @@ function parseListOptions(req: Request, includeUnpublished: boolean): ListOption
           'isPublished must be either "true" or "false".'
         );
       }
-
       filter.isPublished = isPublished === 'true';
     }
 
@@ -467,21 +370,11 @@ function parseListOptions(req: Request, includeUnpublished: boolean): ListOption
           'createdBy must be a valid MongoDB ObjectId.'
         );
       }
-
       filter.createdBy = new Types.ObjectId(createdBy);
     }
   }
 
   return { page, limit, filter };
-}
-
-function getPagination(page: number, limit: number, total: number) {
-  return {
-    page,
-    limit,
-    total,
-    totalPages: total === 0 ? 0 : Math.ceil(total / limit),
-  };
 }
 
 function toPublicSummary(problem: ProblemDocument) {
@@ -525,7 +418,10 @@ function toTestCaseResponse(testCase: TestCaseDocument) {
   };
 }
 
-async function findProblemOrThrow(id: unknown): Promise<ProblemDocument> {
+async function findProblemOrThrow(
+  id: unknown,
+  session?: ClientSession
+): Promise<ProblemDocument> {
   if (typeof id !== 'string' || !isValidObjectId(id)) {
     throw new HttpError(
       400,
@@ -534,7 +430,11 @@ async function findProblemOrThrow(id: unknown): Promise<ProblemDocument> {
     );
   }
 
-  const problem = await Problem.findById(id).exec();
+  const query = Problem.findById(id);
+  if (session) {
+    query.session(session);
+  }
+  const problem = await query.exec();
   if (!problem) {
     throw new HttpError(404, 'PROBLEM_NOT_FOUND', 'Problem not found.');
   }
@@ -567,7 +467,7 @@ async function sendAdminProblem(
   statusCode = 200
 ): Promise<void> {
   const testCases = await TestCase.find({ problem: problem._id })
-    .sort({ isSample: -1, order: 1 })
+    .sort({ order: 1 })
     .exec();
 
   res.status(statusCode).json({
@@ -580,54 +480,19 @@ async function sendAdminProblem(
 
 async function insertTestCases(
   problemId: Types.ObjectId,
-  testCases: TestCaseInput[]
+  testCases: TestCaseInput[],
+  session?: ClientSession
 ): Promise<void> {
   if (testCases.length === 0) {
     return;
   }
 
-  await TestCase.insertMany(
-    testCases.map((testCase) => ({
-      ...testCase,
-      problem: problemId,
-    }))
-  );
-}
-
-async function replaceTestCases(
-  problemId: Types.ObjectId,
-  testCases: TestCaseInput[]
-): Promise<void> {
-  const existingTestCases = await TestCase.find({ problem: problemId }).exec();
-  const existingData: TestCaseInput[] = existingTestCases.map((testCase) => ({
-    input: testCase.input,
-    expectedOutput: testCase.expectedOutput,
-    isSample: testCase.isSample,
-    order: testCase.order,
-    ...(testCase.explanation !== undefined
-      ? { explanation: testCase.explanation }
-      : {}),
+  const docs = testCases.map((testCase) => ({
+    ...testCase,
+    problem: problemId,
   }));
 
-  await TestCase.deleteMany({ problem: problemId }).exec();
-
-  if (testCases.length === 0) {
-    return;
-  }
-
-  try {
-    await insertTestCases(problemId, testCases);
-  } catch (error) {
-    if (existingData.length > 0) {
-      try {
-        await insertTestCases(problemId, existingData);
-      } catch (restoreError) {
-        console.error('Failed to restore problem test cases:', restoreError);
-      }
-    }
-
-    throw error;
-  }
+  await TestCase.insertMany(docs, session ? { session } : {});
 }
 
 export async function listPublicProblems(
@@ -707,19 +572,31 @@ export async function createProblem(
   const authUser = getAuthUser(req);
   const { input, testCases } = parseProblemCreateInput(req.body as unknown);
 
-  const problem = new Problem({
-    ...input,
-    createdBy: authUser.id,
-  });
-
-  await problem.save();
-
-  try {
-    await insertTestCases(problem._id, testCases);
-  } catch (error) {
-    await Problem.findByIdAndDelete(problem._id).exec();
-    throw error;
-  }
+  const problem = await runInTransaction(
+    async (session) => {
+      const created = new Problem({
+        ...input,
+        createdBy: new Types.ObjectId(authUser.id),
+      });
+      await created.save(session ? { session } : {});
+      await insertTestCases(created._id, testCases, session);
+      return created;
+    },
+    async () => {
+      const created = new Problem({
+        ...input,
+        createdBy: new Types.ObjectId(authUser.id),
+      });
+      await created.save();
+      try {
+        await insertTestCases(created._id, testCases);
+      } catch (error) {
+        await Problem.findByIdAndDelete(created._id).exec();
+        throw error;
+      }
+      return created;
+    }
+  );
 
   await sendAdminProblem(res, problem, 201);
 }
@@ -728,18 +605,17 @@ export async function updateProblem(
   req: Request,
   res: Response
 ): Promise<void> {
-  const problem = await findProblemOrThrow(req.params.id);
+  const existingProblem = await findProblemOrThrow(req.params.id);
   const { input, testCases } = parseProblemUpdateInput(
     req.body as unknown,
-    problem.supportedLanguages
+    existingProblem.supportedLanguages
   );
 
   const nextLanguages = input.supportedLanguages;
-  if (nextLanguages && problem.starterCode) {
-    const invalidLanguages = Object.keys(problem.starterCode).filter(
+  if (nextLanguages && existingProblem.starterCode) {
+    const invalidLanguages = Object.keys(existingProblem.starterCode).filter(
       (language) => !nextLanguages.includes(language as SupportedLanguage)
     );
-
     if (invalidLanguages.length > 0) {
       throw new HttpError(
         400,
@@ -749,39 +625,88 @@ export async function updateProblem(
     }
   }
 
-  problem.set(input);
-  await problem.save();
+  const updatedProblem = await runInTransaction(
+    async (session) => {
+      const problem = await findProblemOrThrow(req.params.id, session);
+      problem.set(input);
+      await problem.save(session ? { session } : {});
 
-  if (testCases !== undefined) {
-    await replaceTestCases(problem._id, testCases);
-  }
+      if (testCases !== undefined) {
+        await TestCase.deleteMany(
+          { problem: problem._id },
+          session ? { session } : {}
+        ).exec();
+        await insertTestCases(problem._id, testCases, session);
+      }
+      return problem;
+    },
+    async () => {
+      const problem = await findProblemOrThrow(req.params.id);
+      const previousTestCases =
+        testCases !== undefined
+          ? (await TestCase.find({ problem: problem._id }).lean().exec()).map((tc) => ({
+              input: tc.input,
+              expectedOutput: tc.expectedOutput,
+              isSample: tc.isSample,
+              order: tc.order,
+              ...(tc.explanation !== undefined ? { explanation: tc.explanation } : {}),
+            }))
+          : [];
 
-  await sendAdminProblem(res, problem);
+      problem.set(input);
+      await problem.save();
+
+      if (testCases !== undefined) {
+        await TestCase.deleteMany({ problem: problem._id }).exec();
+        try {
+          await insertTestCases(problem._id, testCases);
+        } catch (error) {
+          if (previousTestCases.length > 0) {
+            await insertTestCases(problem._id, previousTestCases).catch(() => {});
+          }
+          throw error;
+        }
+      }
+      return problem;
+    }
+  );
+
+  await sendAdminProblem(res, updatedProblem);
 }
 
 export async function deleteProblem(
   req: Request,
   res: Response
 ): Promise<void> {
-  const problem = await findProblemOrThrow(req.params.id);
+  await runInTransaction(async (session) => {
+    const problem = await findProblemOrThrow(req.params.id, session);
 
-  const liveContest = await Contest.exists({
-    status: 'live',
-    'problems.problem': problem._id,
-  }).exec();
+    const liveContestQuery = Contest.exists({
+      status: 'live',
+      'problems.problem': problem._id,
+    });
+    if (session) {
+      liveContestQuery.session(session);
+    }
+    const liveContest = await liveContestQuery.exec();
 
-  if (liveContest) {
-    throw new HttpError(
-      409,
-      'PROBLEM_IN_LIVE_CONTEST',
-      'Cannot delete a problem that is part of a live contest.'
-    );
-  }
+    if (liveContest) {
+      throw new HttpError(
+        409,
+        'PROBLEM_IN_LIVE_CONTEST',
+        'Cannot delete a problem that is part of a live contest.'
+      );
+    }
 
-  await Promise.all([
-    Problem.findByIdAndDelete(problem._id).exec(),
-    TestCase.deleteMany({ problem: problem._id }).exec(),
-  ]);
+    await TestCase.deleteMany(
+      { problem: problem._id },
+      session ? { session } : {}
+    ).exec();
+    await Problem.deleteOne(
+      { _id: problem._id },
+      session ? { session } : {}
+    ).exec();
+  });
 
   res.status(204).send();
 }
