@@ -49,3 +49,22 @@ userSchema.index(
 );
 
 export const User = model<IUser>('User', userSchema);
+
+export interface IStudent extends IUser {
+  role: 'user';
+}
+
+export type StudentDocument = HydratedDocument<IStudent>;
+
+/**
+ * `role` is the discriminator key, so Mongooses requires a concrete
+ * discriminator for the default `user` role as well. Without this, creating a
+ * regular account fails with: Discriminator "user" not found for model "User".
+ */
+const studentSchema = new Schema<IStudent>({});
+
+export const Student = User.discriminator<IStudent>(
+  'Student',
+  studentSchema,
+  'user'
+);
