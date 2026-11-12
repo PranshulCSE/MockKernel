@@ -1,8 +1,10 @@
 export type Verdict =
   | 'PENDING'
+  | 'RUNNING'
   | 'ACCEPTED'
   | 'WRONG_ANSWER'
   | 'TLE'
   | 'RUNTIME_ERROR'
   | 'COMPILE_ERROR'
+  | 'INTERNAL_ERROR'
   | 'PLAGIARISM_FLAGGED'

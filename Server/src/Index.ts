@@ -1,4 +1,6 @@
 import express from "express";
+// Register all Mongoose models (discriminators need evaluation order)
+import './models/index.js';
 const app = express();
 import dotenv from "dotenv";
 dotenv.config();
