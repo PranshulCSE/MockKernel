@@ -5,7 +5,7 @@ import { PassThrough } from 'node:stream';
 import test from 'node:test';
 import express, { type Express } from 'express';
 import { errorHandler } from '../src/middleware/errorHandler.js';
-import type { AuthenticatedRequest } from '../src/middleware/mockAuth.js';
+import type { AuthenticatedRequest } from '../src/middleware/auth.js';
 import {
   buildRateLimitKey,
   computeTokenBucketStep,

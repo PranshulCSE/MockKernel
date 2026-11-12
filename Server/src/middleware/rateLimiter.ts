@@ -13,6 +13,15 @@ export interface RateLimitPolicy {
   keyBy: RateLimitKeyBy;
 }
 
+export interface RateLimitRedisClient {
+  status?: string;
+  eval(
+    script: string,
+    numKeys: number,
+    ...args: Array<string | number>
+  ): Promise<unknown>;
+}
+
 export const RATE_LIMIT_POLICIES: Record<RateLimitGroup, RateLimitPolicy> = {
   submit: { capacity: 10, windowSeconds: 60, keyBy: 'userOrIp' },
   auth: { capacity: 20, windowSeconds: 60, keyBy: 'ip' },
@@ -189,7 +198,7 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
 
 export interface RateLimiterOptions {
   policy?: Partial<RateLimitPolicy>;
-  redisClient?: Pick<Redis, 'eval' | 'status'>;
+  redisClient?: RateLimitRedisClient;
   failOpen?: boolean;
   now?: () => number;
   commandTimeoutMs?: number;

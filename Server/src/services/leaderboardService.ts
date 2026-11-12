@@ -1,4 +1,3 @@
-import type { Redis } from 'ioredis';
 import { Types } from 'mongoose';
 import { getRedisClient } from '../config/redis.js';
 import { Contest } from '../models/Contest.js';
@@ -15,8 +14,25 @@ export interface LeaderboardEntry {
   score: number;
 }
 
+export interface LeaderboardRedisClient {
+  status?: string;
+  zincrby(key: string, increment: number, member: string): Promise<string>;
+  zrevrange(
+    key: string,
+    start: number,
+    stop: number,
+    withScores?: string
+  ): Promise<string[]>;
+  zrevrank(key: string, member: string): Promise<number | null>;
+  zscore(key: string, member: string): Promise<string | null>;
+  zcard(key: string): Promise<number>;
+  zrem(key: string, ...members: string[]): Promise<number>;
+  sadd(key: string, ...members: string[]): Promise<number>;
+  del(...keys: string[]): Promise<number>;
+}
+
 export interface LeaderboardDeps {
-  redisClient?: Redis;
+  redisClient?: LeaderboardRedisClient;
 }
 
 export function getLeaderboardKey(contestId: string): string {
@@ -46,11 +62,11 @@ export function parseZrevrangeWithScores(
   return result;
 }
 
-function getClient(deps?: LeaderboardDeps): Redis {
-  return deps?.redisClient ?? getRedisClient();
+function getClient(deps?: LeaderboardDeps): LeaderboardRedisClient {
+  return (deps?.redisClient ?? getRedisClient()) as LeaderboardRedisClient;
 }
 
-function isRedisReady(client: Redis): boolean {
+function isRedisReady(client: LeaderboardRedisClient): boolean {
   return client.status === undefined || client.status === 'ready';
 }
 
