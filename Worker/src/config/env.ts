@@ -115,7 +115,7 @@ export function getWorkerEnvConfig(): WorkerEnvConfig {
 
   const rawMaxAttempts = Number(process.env.MAX_POLL_ATTEMPTS);
   const maxPollAttempts =
-    Number.isInteger(rawMaxAttempts) && rawMaxAttempts >= 1 ? rawMaxAttempts : 20;
+    Number.isInteger(rawMaxAttempts) && rawMaxAttempts >= 1 ? rawMaxAttempts : 10;
 
   const rawConcurrency = Number(process.env.WORKER_CONCURRENCY);
   const workerConcurrency =

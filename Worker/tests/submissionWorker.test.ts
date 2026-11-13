@@ -223,4 +223,72 @@ describe('Worker submission job validation, execution, partial persistence, and 
       tc2,
     ]);
   });
+
+  it('marks the hanging test case and submission as TLE without retrying', async () => {
+    const subId = new Types.ObjectId().toString();
+    const tc1 = new Types.ObjectId().toString();
+    const tc2 = new Types.ObjectId().toString();
+
+    const storedSubmission = {
+      _id: new Types.ObjectId(subId),
+      verdict: 'PENDING' as string,
+      language: 'python' as const,
+      sourceCode: 'print(input())',
+      testCaseResults: [] as ITestCaseResult[],
+      compileOutput: undefined as string | undefined,
+      judge0Token: undefined as string | undefined,
+    };
+
+    vi.spyOn(Submission, 'findById').mockReturnValue({
+      exec: vi.fn().mockResolvedValue(storedSubmission),
+    } as never);
+
+    vi.spyOn(Submission, 'findByIdAndUpdate').mockImplementation(((_id: unknown, update: unknown) => {
+      const setPayload = (update as { $set: Record<string, unknown> }).$set;
+      Object.assign(storedSubmission, setPayload);
+      return { exec: vi.fn().mockResolvedValue(storedSubmission) } as never;
+    }) as never);
+
+    const executeSpy = vi
+      .fn()
+      .mockResolvedValueOnce({
+        token: 'tok-ok',
+        verdict: 'ACCEPTED',
+        passed: true,
+        runtime: 12,
+        memory: 256,
+        stdout: 'a',
+      })
+      .mockRejectedValueOnce(
+        new Judge0Error(
+          'JUDGE0_POLL_TIMEOUT',
+          'Judge0 execution did not complete within the 10000ms timeout guard.',
+          { retryable: false }
+        )
+      );
+
+    await expect(
+      processSubmissionJob(
+        {
+          id: subId,
+          data: {
+            submissionId: subId,
+            testCases: [
+              { testCaseId: tc1, input: 'a', expectedOutput: 'a' },
+              { testCaseId: tc2, input: 'b', expectedOutput: 'b' },
+            ],
+          },
+        },
+        { judge0: { executeTestCase: executeSpy } as unknown as Judge0Service }
+      )
+    ).rejects.toThrow(UnrecoverableError);
+
+    expect(executeSpy).toHaveBeenCalledTimes(2);
+    expect(storedSubmission.verdict).toBe('TLE');
+    expect(storedSubmission.testCaseResults).toHaveLength(2);
+    expect(storedSubmission.testCaseResults?.[0]?.verdict).toBe('ACCEPTED');
+    expect(storedSubmission.testCaseResults?.[1]?.verdict).toBe('TLE');
+    expect(storedSubmission.testCaseResults?.[1]?.passed).toBe(false);
+    expect(storedSubmission.testCaseResults?.[1]?.testCase.toString()).toBe(tc2);
+  });
 });
