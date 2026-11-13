@@ -5,3 +5,6 @@ build/
 .env
 .DS_Store
 
+# Local-only database seed script (never commit)
+Server/src/scripts/seed.ts
+
