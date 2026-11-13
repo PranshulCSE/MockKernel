@@ -6,6 +6,7 @@ import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import NotFoundPage from './pages/NotFoundPage'
 import PracticePage from './pages/PracticePage'
+import ProblemWorkspacePage from './pages/ProblemWorkspacePage'
 import SignupPage from './pages/SignupPage'
 
 export default function App() {
@@ -20,6 +21,8 @@ export default function App() {
           <Route index element={<LandingPage />} />
           <Route element={<RequireAuth />}>
             <Route path="/practice" element={<PracticePage />} />
+            <Route path="/problems" element={<PracticePage />} />
+            <Route path="/problems/:id" element={<ProblemWorkspacePage />} />
             <Route path="/interview" element={<InterviewPage />} />
           </Route>
           <Route path="*" element={<NotFoundPage />} />
