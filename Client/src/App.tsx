@@ -6,6 +6,7 @@ import InterviewPage from './pages/InterviewPage'
 import InterviewRoomPage from './pages/InterviewRoomPage'
 import InterviewSummaryPage from './pages/InterviewSummaryPage'
 import InterviewHistoryPage from './pages/InterviewHistoryPage'
+import DashboardPage from './pages/DashboardPage'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import NotFoundPage from './pages/NotFoundPage'
@@ -25,6 +26,7 @@ export default function App() {
             <Route index element={<LandingPage />} />
             <Route element={<RequireAuth />}>
               <Route path="/practice" element={<PracticePage />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/interview" element={<InterviewPage />} />
               <Route path="/interview/:id" element={<InterviewRoomPage />} />
               <Route path="/interview/:id/summary" element={<InterviewSummaryPage />} />
