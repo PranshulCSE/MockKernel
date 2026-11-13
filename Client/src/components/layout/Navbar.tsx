@@ -6,8 +6,9 @@ import { Button } from '../ui'
 import { Logo } from './Logo'
 
 const links = [
-  { to: '/practice', label: 'Coding practice' },
-  { to: '/interview', label: 'Mock interview' },
+  { to: '/practice', label: 'Coding Practice' },
+  { to: '/contests', label: 'Contests' },
+  { to: '/interview', label: 'Mock Interview' },
 ]
 
 export function Navbar() {
