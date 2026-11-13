@@ -17,7 +17,7 @@ Copy `Worker/.env.example` to `Worker/.env`:
 | `JUDGE0_API_KEY` | No | — | Optional Judge0 `X-Auth-Token` |
 | `SUBMISSION_QUEUE_NAME` | No | `submission-queue` | BullMQ queue name |
 | `POLL_INTERVAL_MS` | No | `1000` | Judge0 polling interval (ms, min 10) |
-| `MAX_POLL_ATTEMPTS` | No | `20` | Max Judge0 polling attempts |
+| `MAX_POLL_ATTEMPTS` | No | `10` | Max Judge0 polling attempts; a hard 10s execution guard also applies |
 | `WORKER_CONCURRENCY` | No | `5` | Concurrent BullMQ jobs |
 
 ## Commands

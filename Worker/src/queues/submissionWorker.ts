@@ -255,6 +255,7 @@ export const processSubmissionJob = async (
 
   let compileOutput = submission.compileOutput;
   let lastToken = submission.judge0Token;
+  let activeTestCase: SubmissionJobTestCase | undefined;
 
   try {
     for (const tc of testCases) {
@@ -270,6 +271,7 @@ export const processSubmissionJob = async (
         `[Worker] Executing test case ${tc.testCaseId} for submission ${submissionId}...`
       );
 
+      activeTestCase = tc;
       const execResult = await judge0.executeTestCase(
         submission.sourceCode,
         submission.language,
@@ -303,7 +305,9 @@ export const processSubmissionJob = async (
         },
       }).exec();
 
-      if (execResult.verdict === 'COMPILE_ERROR') {
+      activeTestCase = undefined;
+
+      if (execResult.verdict === 'COMPILE_ERROR' || execResult.verdict === 'TLE') {
         break;
       }
     }
@@ -326,27 +330,48 @@ export const processSubmissionJob = async (
       `[Worker] Completed Submission ${submissionId} with Verdict: ${overallVerdict}`
     );
   } catch (error: unknown) {
-    const partialResults = buildOrderedResults(testCases, resultByTestCaseId);
     const errorMessage =
       error instanceof Error ? error.message : 'Worker execution failure';
+    const isPollTimeout =
+      error instanceof Judge0Error && error.code === 'JUDGE0_POLL_TIMEOUT';
+
+    if (
+      isPollTimeout &&
+      activeTestCase &&
+      !resultByTestCaseId.has(activeTestCase.testCaseId)
+    ) {
+      resultByTestCaseId.set(activeTestCase.testCaseId, {
+        testCase: new Types.ObjectId(activeTestCase.testCaseId),
+        passed: false,
+        verdict: 'TLE',
+        stderr: errorMessage,
+      });
+    }
+
+    const partialResults = buildOrderedResults(testCases, resultByTestCaseId);
+    const failureVerdict: SubmissionVerdict = isPollTimeout ? 'TLE' : 'INTERNAL_ERROR';
 
     console.error(`[Worker] Error executing submission ${submissionId}:`, errorMessage);
 
     await Submission.findByIdAndUpdate(submissionId, {
       $set: {
-        verdict: 'INTERNAL_ERROR',
+        verdict: failureVerdict,
         ...(partialResults.length > 0 ? { testCaseResults: partialResults } : {}),
         ...(compileOutput !== undefined
           ? { compileOutput }
-          : { compileOutput: errorMessage }),
+          : failureVerdict === 'INTERNAL_ERROR'
+            ? { compileOutput: errorMessage }
+            : {}),
         ...(lastToken ? { judge0Token: lastToken } : {}),
       },
     })
       .exec()
       .catch(() => {});
 
-    if (error instanceof Judge0Error && !error.retryable) {
-      throw new UnrecoverableError(error.message);
+    // A poll timeout is a final TLE verdict, not a transient infrastructure
+    // failure. Do not let BullMQ retry and re-run the hanging submission.
+    if (isPollTimeout || (error instanceof Judge0Error && !error.retryable)) {
+      throw new UnrecoverableError(errorMessage);
     }
     throw error;
   }

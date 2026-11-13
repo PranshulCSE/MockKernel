@@ -35,6 +35,17 @@ describe('Worker startup configuration and connection error handling', () => {
     expect(config.workerConcurrency).toBe(3);
   });
 
+  it('defaults Judge0 polling to a 10s window', () => {
+    delete process.env.POLL_INTERVAL_MS;
+    delete process.env.MAX_POLL_ATTEMPTS;
+
+    const config = validateWorkerEnv();
+
+    expect(config.pollIntervalMs).toBe(1000);
+    expect(config.maxPollAttempts).toBe(10);
+    expect(config.pollIntervalMs * config.maxPollAttempts).toBe(10_000);
+  });
+
   it('fails clearly on invalid or missing MONGODB_URI, REDIS_PORT, JUDGE0_API_URL, or worker settings', () => {
     process.env.MONGODB_URI = '';
     process.env.REDIS_PORT = 'bad-port';
