@@ -1,10 +1,12 @@
-import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google'
+import { useEffect, useState } from 'react'
+import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google'
 import { Button } from '../ui'
 
 interface GoogleButtonProps {
   label: string
   loading?: boolean
-  onToken: (token: string) => void
+  mode?: 'login' | 'signup'
+  onToken: (idToken: string) => void
   onError: () => void
 }
 
@@ -21,19 +23,65 @@ function GoogleLogo() {
   )
 }
 
-function RealGoogleButton({ label, loading, onToken, onError }: GoogleButtonProps) {
-  const start = useGoogleLogin({
-    onSuccess: (res) => onToken(res.access_token),
-    onError,
-  })
+function useGoogleButtonWidth(): number {
+  const [width, setWidth] = useState(() =>
+    typeof window === 'undefined'
+      ? 320
+      : Math.min(384, Math.max(200, window.innerWidth - 112)),
+  )
+
+  useEffect(() => {
+    const update = () => {
+      setWidth(Math.min(384, Math.max(200, window.innerWidth - 112)))
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+
+  return width
+}
+
+function RealGoogleButton({
+  label,
+  loading,
+  mode = 'login',
+  onToken,
+  onError,
+}: GoogleButtonProps) {
+  const width = useGoogleButtonWidth()
+
+  if (loading) {
+    return (
+      <Button variant="secondary" className="w-full" loading leftIcon={<GoogleLogo />}>
+        {label}
+      </Button>
+    )
+  }
+
   return (
-    <Button variant="secondary" className="w-full" loading={loading} leftIcon={<GoogleLogo />} onClick={() => start()}>
-      {label}
-    </Button>
+    <div className="flex w-full justify-center">
+      <GoogleLogin
+        onSuccess={(response) => {
+          if (!response.credential) {
+            onError()
+            return
+          }
+          onToken(response.credential)
+        }}
+        onError={onError}
+        text={mode === 'signup' ? 'signup_with' : 'continue_with'}
+        theme="filled_black"
+        size="large"
+        shape="pill"
+        width={width}
+        logo_alignment="left"
+      />
+    </div>
   )
 }
 
-// With VITE_GOOGLE_CLIENT_ID set this opens the real Google popup.
+// With VITE_GOOGLE_CLIENT_ID set, GoogleLogin returns a credential ID token.
 // Without it, a mock token is used so the flow works in local dev.
 export function GoogleButton(props: GoogleButtonProps) {
   if (clientId) {

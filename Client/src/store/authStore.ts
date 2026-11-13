@@ -8,7 +8,7 @@ interface AuthState {
   accessToken: string | null
   login: (payload: LoginPayload) => Promise<void>
   register: (payload: RegisterPayload) => Promise<void>
-  loginWithGoogle: (googleToken: string) => Promise<void>
+  loginWithGoogle: (googleIdToken: string) => Promise<void>
   logout: () => void
 }
 
@@ -29,8 +29,8 @@ export const useAuthStore = create<AuthState>()(
         register: async (payload) => {
           apply(await authApi.register(payload))
         },
-        loginWithGoogle: async (token) => {
-          apply(await authApi.loginWithGoogle(token))
+        loginWithGoogle: async (googleIdToken) => {
+          apply(await authApi.loginWithGoogle(googleIdToken))
         },
         logout: () => {
           set({ user: null, accessToken: null })

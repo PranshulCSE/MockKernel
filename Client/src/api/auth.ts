@@ -75,10 +75,11 @@ export async function register({ name, email, password }: RegisterPayload): Prom
   return toResponse(created)
 }
 
-// The real version sends the Google token to the backend, which verifies it.
-export async function loginWithGoogle(googleToken: string): Promise<AuthResponse> {
+// The real version sends the Google ID token (the credential returned by
+// <GoogleLogin>) to the backend, which verifies it with Google.
+export async function loginWithGoogle(googleIdToken: string): Promise<AuthResponse> {
   await wait(500)
-  if (!googleToken) throw new AuthError('GOOGLE_FAILED', 'Google sign-in was cancelled.')
+  if (!googleIdToken) throw new AuthError('GOOGLE_FAILED', 'Google sign-in was cancelled.')
   const users = readUsers()
   const email = 'google.student@mockkernel.dev'
   const existing = users.find((u) => u.email === email)
