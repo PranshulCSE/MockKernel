@@ -3,6 +3,9 @@ import { GuestOnly, RequireAuth } from './components/auth/RouteGuards'
 import { AppLayout } from './components/layout/AppLayout'
 import { ToastProvider } from './components/ui/Toast'
 import InterviewPage from './pages/InterviewPage'
+import InterviewRoomPage from './pages/InterviewRoomPage'
+import InterviewSummaryPage from './pages/InterviewSummaryPage'
+import InterviewHistoryPage from './pages/InterviewHistoryPage'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import NotFoundPage from './pages/NotFoundPage'
@@ -23,6 +26,9 @@ export default function App() {
             <Route element={<RequireAuth />}>
               <Route path="/practice" element={<PracticePage />} />
               <Route path="/interview" element={<InterviewPage />} />
+              <Route path="/interview/:id" element={<InterviewRoomPage />} />
+              <Route path="/interview/:id/summary" element={<InterviewSummaryPage />} />
+              <Route path="/interviews" element={<InterviewHistoryPage />} />
             </Route>
             <Route path="*" element={<NotFoundPage />} />
           </Route>
