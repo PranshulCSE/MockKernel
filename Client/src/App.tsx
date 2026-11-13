@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from 'react-router'
 import { GuestOnly, RequireAuth } from './components/auth/RouteGuards'
 import { AppLayout } from './components/layout/AppLayout'
+import ContestArenaPage from './pages/ContestArenaPage'
 import ContestsPage from './pages/ContestsPage'
 import InterviewPage from './pages/InterviewPage'
 import LandingPage from './pages/LandingPage'
@@ -22,6 +23,7 @@ export default function App() {
           <Route index element={<LandingPage />} />
           <Route path="/contests" element={<ContestsPage />} />
           <Route element={<RequireAuth />}>
+            <Route path="/contests/:id" element={<ContestArenaPage />} />
             <Route path="/practice" element={<PracticePage />} />
             <Route path="/problems" element={<PracticePage />} />
             <Route path="/problems/:id" element={<ProblemWorkspacePage />} />
