@@ -34,9 +34,9 @@
   - Update the worker/Judge0 guard to enforce the PRD's 10-second execution SLA and mark hanging Judge0 tasks as `TLE` (Time Limit Exceeded) rather than `INTERNAL_ERROR`.
 - [ ] **Align Google OAuth Token Flow (`F1`):**
   - `Server/src/controllers/authController.ts` (`POST /api/auth/google`) requires `{ idToken }` verified via `OAuth2Client.verifyIdToken()`, whereas `Client/src/components/auth/GoogleButton.tsx` currently uses `useGoogleLogin` (which yields an OAuth `access_token`). Decide whether to switch `Client` to `<GoogleLogin>` (`credential` ID token) or add `access_token` verification on `Server`.
-- [ ] **Resolve Scope Questions / Optional Endpoints:**
-  - **Student Stats Endpoint:** Decide whether Student Dashboard KPIs (solved count, attempted count, contests joined, interview stats) will be computed from existing `GET /api/submissions` + `GET /api/interviews` or backed by a dedicated `GET /api/users/me/stats` endpoint.
-  - **3-Tier Hint Engine:** Mentioned in root `README.md`, but absent from `Documentations/MockKernel_Project_Blueprint.pdf` and `Documentations/mockkernel-rules.md` (which restricts scope to the PRD). Either implement a Hints schema/endpoint or remove the mention from `README.md`.
+- [x] **Resolve Scope Questions / Optional Endpoints:**
+  - **Student Stats Endpoint:** Resolved with a dedicated `GET /api/users/me/stats` endpoint backed by MongoDB aggregations for solved/attempted problems, submissions, contests joined, and interview stats.
+  - **3-Tier Hint Engine:** Removed from root `README.md` and landing-page copy; it is not part of the PRD scope.
 - [ ] **Local & Live Integration Verification:**
   - Run `npm --prefix Server test` outside sandbox to confirm all 38 tests pass.
   - Run an end-to-end test against real MongoDB (`rs0`), Redis, Judge0 CE, and Groq API.

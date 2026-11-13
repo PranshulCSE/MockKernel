@@ -8,7 +8,6 @@ Students can solve LeetCode-style problems in a sandboxed, multi-language coding
 * **Sandboxed Code Execution:** Secure, local code compilation (JavaScript, Python, C++) powered by Judge0 and managed asynchronously via BullMQ and Redis.
 * **Adaptive AI Interviewer:** Role-specific technical interviews (Frontend, Backend, DSA) powered by Groq (Llama-3.3), featuring voice-to-text input and structured JSON feedback scoring.
 * **Smart Anti-Plagiarism:** Token-based Abstract Syntax Tree (AST) normalization to detect logic duplication, ignoring whitespace and variable renaming.
-* **Progressive Hint Engine:** A 3-tier penalty-based hint system to guide students without revealing direct solutions.
 * **Live Contests & Analytics:** Timed competitive rooms, Redis-backed leaderboards, and a student dashboard visualizing performance metrics.
 
 ### 🛠️ Tech Stack

@@ -9,7 +9,7 @@ const modules = [
     icon: Code2,
     title: 'Coding practice',
     text: 'Solve LeetCode-style problems in a multi-language editor and get a verdict in seconds.',
-    points: ['Python, C++, Java and JavaScript', 'Sample and hidden test cases', 'Hints that cost points, not answers'],
+    points: ['Python, C++, Java and JavaScript', 'Sample and hidden test cases', 'Runtime and memory feedback on every submission'],
     cta: 'Open coding practice',
     glow: 'bg-violet/25',
   },

@@ -23,6 +23,7 @@ import {
   publicProblemRouter,
 } from './routes/problemRoutes.js';
 import { submissionRouter } from './routes/submissionRoutes.js';
+import { userRouter } from './routes/userRoutes.js';
 
 export interface CreateAppOptions {
   corsOrigins?: string[];
@@ -60,6 +61,7 @@ export function createApp(options: CreateAppOptions = {}): Express {
   app.use('/api/admin/contests', adminContestRouter);
   app.use('/api/submissions', submissionRouter);
   app.use('/api/interviews', interviewRouter);
+  app.use('/api/users', userRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
