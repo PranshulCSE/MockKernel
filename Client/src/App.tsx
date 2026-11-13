@@ -1,5 +1,5 @@
 import { BrowserRouter, Route, Routes } from 'react-router'
-import { GuestOnly, RequireAuth } from './components/auth/RouteGuards'
+import { GuestOnly, RequireAuth, RequireRole } from './components/auth/RouteGuards'
 import { AppLayout } from './components/layout/AppLayout'
 import { ToastProvider } from './components/ui/Toast'
 import InterviewPage from './pages/InterviewPage'
@@ -12,6 +12,12 @@ import LoginPage from './pages/LoginPage'
 import NotFoundPage from './pages/NotFoundPage'
 import PracticePage from './pages/PracticePage'
 import SignupPage from './pages/SignupPage'
+import AdminLayout from './pages/admin/AdminLayout'
+import AdminOverviewPage from './pages/admin/AdminOverviewPage'
+import AdminProblemsPage from './pages/admin/AdminProblemsPage'
+import AdminContestsPage from './pages/admin/AdminContestsPage'
+import AdminContestLivePage from './pages/admin/AdminContestLivePage'
+import AdminUsersPage from './pages/admin/AdminUsersPage'
 
 export default function App() {
   return (
@@ -31,6 +37,17 @@ export default function App() {
               <Route path="/interview/:id" element={<InterviewRoomPage />} />
               <Route path="/interview/:id/summary" element={<InterviewSummaryPage />} />
               <Route path="/interviews" element={<InterviewHistoryPage />} />
+
+              {/* Admin & SuperAdmin Suite */}
+              <Route element={<RequireRole roles={['admin', 'superadmin']} />}>
+                <Route path="/admin" element={<AdminLayout />}>
+                  <Route index element={<AdminOverviewPage />} />
+                  <Route path="problems" element={<AdminProblemsPage />} />
+                  <Route path="contests" element={<AdminContestsPage />} />
+                  <Route path="contests/:id/live" element={<AdminContestLivePage />} />
+                  <Route path="users" element={<AdminUsersPage />} />
+                </Route>
+              </Route>
             </Route>
             <Route path="*" element={<NotFoundPage />} />
           </Route>
