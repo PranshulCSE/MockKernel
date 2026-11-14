@@ -153,13 +153,15 @@ export function useSocket() {
       leaderboardCallbacks.current.forEach((cb) => cb(payload))
     })
 
+    const timers = pollingTimers.current
+
     return () => {
       socket.disconnect()
       socketRef.current = null
 
       // Clean up all polling timers on unmount
-      pollingTimers.current.forEach((timer) => clearInterval(timer))
-      pollingTimers.current.clear()
+      timers.forEach((timer) => clearInterval(timer))
+      timers.clear()
     }
   }, [accessToken, startPolling, stopPolling])
 
@@ -189,7 +191,6 @@ export function useSocket() {
 
   return {
     status,
-    socket: socketRef.current,
     joinContest,
     leaveContest,
     trackSubmission,

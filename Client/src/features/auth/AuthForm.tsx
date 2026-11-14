@@ -101,8 +101,9 @@ export function AuthForm({ mode }: { mode: Mode }) {
             <div className="mt-6">
               <GoogleButton
                 label={t.google}
+                mode={mode}
                 loading={busy === 'google'}
-                onToken={(token) => void run('google', () => loginWithGoogle(token))}
+                onToken={(idToken) => void run('google', () => loginWithGoogle(idToken))}
                 onError={() => setFormError('Google sign-in failed. Try again or use email.')}
               />
             </div>

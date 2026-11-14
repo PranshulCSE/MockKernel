@@ -116,13 +116,16 @@ export default function ContestArenaPage() {
   // Fetch Contest Details
   useEffect(() => {
     if (!contestId) return
-    setLoadingContest(true)
 
-    getContestById(contestId)
-      .then((data) => {
-        setContest(data)
-      })
-      .catch(() => {
+    let cancelled = false
+
+    const loadContest = async () => {
+      setLoadingContest(true)
+      try {
+        const data = await getContestById(contestId)
+        if (!cancelled) setContest(data)
+      } catch {
+        if (cancelled) return
         // Mock fallback if contest not yet in DB
         const now = Date.now()
         setContest({
@@ -157,8 +160,16 @@ export default function ContestArenaPage() {
             },
           ],
         })
-      })
-      .finally(() => setLoadingContest(false))
+      } finally {
+        if (!cancelled) setLoadingContest(false)
+      }
+    }
+
+    void loadContest()
+
+    return () => {
+      cancelled = true
+    }
   }, [contestId])
 
   // Load active problem details
@@ -167,13 +178,16 @@ export default function ContestArenaPage() {
   useEffect(() => {
     if (!activeProblemRef?.problem?.id) return
     const pid = activeProblemRef.problem.id
-    setLoadingProblem(true)
 
-    getProblemById(pid)
-      .then((p) => {
-        setCurrentProblem(p)
-      })
-      .catch(() => {
+    let cancelled = false
+
+    const loadProblem = async () => {
+      setLoadingProblem(true)
+      try {
+        const p = await getProblemById(pid)
+        if (!cancelled) setCurrentProblem(p)
+      } catch {
+        if (cancelled) return
         // Fallback problem data
         setCurrentProblem({
           id: pid,
@@ -195,8 +209,16 @@ Input and Output formats follow standard competitive programming conventions.`,
           ],
           createdAt: new Date().toISOString(),
         })
-      })
-      .finally(() => setLoadingProblem(false))
+      } finally {
+        if (!cancelled) setLoadingProblem(false)
+      }
+    }
+
+    void loadProblem()
+
+    return () => {
+      cancelled = true
+    }
   }, [activeProblemRef?.problem?.id, activeProblemRef?.problem?.title, activeProblemRef?.problem?.difficulty])
 
   // Draft loading per problem in contest
@@ -211,13 +233,17 @@ Input and Output formats follow standard competitive programming conventions.`,
       DEFAULT_STARTER_CODES[language] ||
       '// Contest solution\n'
 
-    if (saved !== null) {
-      setCode(saved)
-      setIsDirty(saved !== defaultCode)
-    } else {
-      setCode(defaultCode)
-      setIsDirty(false)
+    const applyDraft = () => {
+      if (saved !== null) {
+        setCode(saved)
+        setIsDirty(saved !== defaultCode)
+      } else {
+        setCode(defaultCode)
+        setIsDirty(false)
+      }
     }
+
+    applyDraft()
   }, [contestId, activeProblemRef?.problem?.id, language, currentProblem])
 
   const handleCodeChange = (newVal: string | undefined) => {
@@ -232,10 +258,7 @@ Input and Output formats follow standard competitive programming conventions.`,
 
   // Rate limit cooldown (E4)
   useEffect(() => {
-    if (cooldownSeconds <= 0) {
-      setRateLimitMessage(null)
-      return
-    }
+    if (cooldownSeconds <= 0) return
     const timer = setInterval(() => setCooldownSeconds((s) => s - 1), 1000)
     return () => clearInterval(timer)
   }, [cooldownSeconds])
@@ -289,15 +312,15 @@ Input and Output formats follow standard competitive programming conventions.`,
           }
         })
       }
-    } catch (err: any) {
-      if (err?.status === 429) {
+    } catch (err: unknown) {
+      if ((err as { status?: number } | null)?.status === 429) {
         setCooldownSeconds(10)
         setRateLimitMessage('Too many submissions! 10s cooldown.')
         setExecutionState({ status: 'IDLE' })
       } else {
         setExecutionState({
           status: 'INTERNAL_ERROR',
-          compileOutput: err?.message || 'Execution failed',
+          compileOutput: err instanceof Error ? err.message : 'Execution failed',
         })
       }
     }
@@ -312,10 +335,11 @@ Input and Output formats follow standard competitive programming conventions.`,
     try {
       await apiLeaveContest(contestId)
       navigate('/contests')
-    } catch (err: any) {
+    } catch (err: unknown) {
       setLeaveError(
-        err?.message ||
-          'Cannot leave contest after solutions have already been submitted.'
+        err instanceof Error
+          ? err.message
+          : 'Cannot leave contest after solutions have already been submitted.'
       )
     } finally {
       setLeaveLoading(false)
@@ -556,7 +580,9 @@ Input and Output formats follow standard competitive programming conventions.`,
             Execution Verdict
           </button>
         </div>
-        {rateLimitMessage && <span className="text-[11px] font-mono text-warn">{rateLimitMessage}</span>}
+        {cooldownSeconds > 0 && rateLimitMessage && (
+          <span className="text-[11px] font-mono text-warn">{rateLimitMessage}</span>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 text-xs font-mono">

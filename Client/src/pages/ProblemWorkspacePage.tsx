@@ -126,13 +126,16 @@ export default function ProblemWorkspacePage() {
   // 1. Fetch Problem Details
   useEffect(() => {
     if (!id) return
-    setLoadingProblem(true)
 
-    getProblemById(id)
-      .then((data) => {
-        setProblem(data)
-      })
-      .catch(() => {
+    let cancelled = false
+
+    const loadProblem = async () => {
+      setLoadingProblem(true)
+      try {
+        const data = await getProblemById(id)
+        if (!cancelled) setProblem(data)
+      } catch {
+        if (cancelled) return
         // Fallback mock problem for local development
         setProblem({
           id,
@@ -167,10 +170,16 @@ You can return the answer in any order.`,
           ],
           createdAt: new Date().toISOString(),
         })
-      })
-      .finally(() => {
-        setLoadingProblem(false)
-      })
+      } finally {
+        if (!cancelled) setLoadingProblem(false)
+      }
+    }
+
+    void loadProblem()
+
+    return () => {
+      cancelled = true
+    }
   }, [id])
 
   // 2. Draft Persistence & Starter Code Loading
@@ -184,13 +193,17 @@ You can return the answer in any order.`,
       DEFAULT_STARTER_CODES[language] ||
       '// Write solution here\n'
 
-    if (savedDraft !== null) {
-      setCode(savedDraft)
-      setIsDirty(savedDraft !== defaultCode)
-    } else {
-      setCode(defaultCode)
-      setIsDirty(false)
+    const applyDraft = () => {
+      if (savedDraft !== null) {
+        setCode(savedDraft)
+        setIsDirty(savedDraft !== defaultCode)
+      } else {
+        setCode(defaultCode)
+        setIsDirty(false)
+      }
     }
+
+    applyDraft()
   }, [id, language, problem])
 
   // Save draft on code edit
@@ -231,14 +244,19 @@ You can return the answer in any order.`,
   }
 
   // Load submissions history
-  const loadHistory = () => {
-    if (!id) return
-    setLoadingHistory(true)
-    getSubmissions(id)
-      .then((data) => {
+  useEffect(() => {
+    if (leftTab !== 'history' || !id) return
+
+    let cancelled = false
+
+    const loadHistory = async () => {
+      setLoadingHistory(true)
+      try {
+        const data = await getSubmissions(id)
+        if (cancelled) return
         setHistory(
-          data.map((s: any) => ({
-            id: s.id || s._id,
+          data.map((s) => ({
+            id: s.id || s._id || '',
             verdict: s.verdict,
             language: s.language,
             runtime: s.runtime,
@@ -246,23 +264,23 @@ You can return the answer in any order.`,
             createdAt: s.createdAt,
           }))
         )
-      })
-      .catch(() => {})
-      .finally(() => setLoadingHistory(false))
-  }
-
-  useEffect(() => {
-    if (leftTab === 'history') {
-      loadHistory()
+      } catch {
+        // Ignore history load errors.
+      } finally {
+        if (!cancelled) setLoadingHistory(false)
+      }
     }
-  }, [leftTab])
+
+    void loadHistory()
+
+    return () => {
+      cancelled = true
+    }
+  }, [leftTab, id])
 
   // Rate limit cooldown interval (E4)
   useEffect(() => {
-    if (cooldownSeconds <= 0) {
-      setRateLimitMessage(null)
-      return
-    }
+    if (cooldownSeconds <= 0) return
     const timer = setInterval(() => {
       setCooldownSeconds((s) => s - 1)
     }, 1000)
@@ -303,8 +321,8 @@ You can return the answer in any order.`,
           })
         })
       }
-    } catch (err: any) {
-      if (err?.status === 429) {
+    } catch (err: unknown) {
+      if ((err as { status?: number } | null)?.status === 429) {
         // Edge Case E4: 429 Rate Limit
         setCooldownSeconds(10)
         setRateLimitMessage('Too many submissions! Please wait 10 seconds cooldown.')
@@ -312,7 +330,7 @@ You can return the answer in any order.`,
       } else {
         setExecutionState({
           status: 'INTERNAL_ERROR',
-          compileOutput: err?.message || 'Execution request failed',
+          compileOutput: err instanceof Error ? err.message : 'Execution request failed',
         })
       }
     }
@@ -693,7 +711,7 @@ You can return the answer in any order.`,
         </div>
 
         {/* E4 Rate limit warning message banner */}
-        {rateLimitMessage && (
+        {cooldownSeconds > 0 && rateLimitMessage && (
           <span className="text-[11px] font-mono text-warn">{rateLimitMessage}</span>
         )}
       </div>

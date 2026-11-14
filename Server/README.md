@@ -131,6 +131,9 @@ Roles: `user`, `admin`, `superadmin`.
 - `POST /api/interviews/:id/complete` — Complete active session and generate summary
 - `PATCH /api/interviews/:id/abandon` — Abandon active session
 
+### Users (`/api/users`)
+- `GET /api/users/me/stats` — Student dashboard KPIs: solved/attempted problems, submissions, contests joined, and interview stats
+
 ### Admin (`/api/admin`)
 - `GET /api/admin/stats` — Platform counts (`admin` / `superadmin`)
 - `POST /api/admin/users` — Create admin account (`superadmin` only)

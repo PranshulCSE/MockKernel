@@ -76,7 +76,10 @@ export default function AdminContestsPage() {
   )
 
   useEffect(() => {
-    void loadContests(page)
+    const run = async () => {
+      await loadContests(page)
+    }
+    void run()
   }, [page, loadContests])
 
   const openCreateDrawer = async () => {

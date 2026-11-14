@@ -41,7 +41,11 @@ interface WindowWithSpeech extends Window {
 }
 
 export function useSpeechRecognition() {
-  const [isSupported, setIsSupported] = useState(false)
+  const [isSupported, setIsSupported] = useState(() => {
+    if (typeof window === 'undefined') return false
+    const win = window as unknown as WindowWithSpeech
+    return Boolean(win.SpeechRecognition || win.webkitSpeechRecognition)
+  })
   const [isListening, setIsListening] = useState(false)
   const [transcript, setTranscript] = useState('')
   const [interimTranscript, setInterimTranscript] = useState('')
@@ -54,12 +58,6 @@ export function useSpeechRecognition() {
   const analyserRef = useRef<AnalyserNode | null>(null)
   const mediaStreamRef = useRef<MediaStream | null>(null)
   const animationFrameRef = useRef<number | null>(null)
-
-  useEffect(() => {
-    const win = window as unknown as WindowWithSpeech
-    const RecognitionClass = win.SpeechRecognition || win.webkitSpeechRecognition
-    setIsSupported(Boolean(RecognitionClass))
-  }, [])
 
   // Audio level analysis
   const setupAudioMeter = async () => {

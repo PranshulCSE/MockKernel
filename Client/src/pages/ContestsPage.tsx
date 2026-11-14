@@ -164,12 +164,12 @@ export default function ContestsPage() {
       )
       // Navigate straight to the live arena
       navigate(`/contests/${contestId}`)
-    } catch (err: any) {
+    } catch (err: unknown) {
       // In case of error, still allow joining mock contest
       if (contestId.startsWith('mock-')) {
         navigate(`/contests/${contestId}`)
       } else {
-        setActionError(err?.message || 'Could not join contest')
+        setActionError(err instanceof Error ? err.message : 'Could not join contest')
       }
     } finally {
       setJoiningId(null)

@@ -35,63 +35,63 @@ export default function PracticePage() {
 
   useEffect(() => {
     let isCancelled = false
-    setLoading(true)
 
-    getProblems({ page, limit, search, difficulty: filter })
-      .then((res) => {
-        if (!isCancelled && res?.data) {
-          const withSerial = res.data.map((p, idx) => ({
-            ...p,
-            serialNo: p.serialNo ?? (idx + 1 + (page - 1) * limit),
+    const loadProblems = async () => {
+      setLoading(true)
+      try {
+        const res = await getProblems({ page, limit, search, difficulty: filter })
+        if (isCancelled || !res?.data) return
+
+        const withSerial = res.data.map((p, idx) => ({
+          ...p,
+          serialNo: p.serialNo ?? (idx + 1 + (page - 1) * limit),
+        }))
+        setProblems(withSerial)
+        if (res.pagination) {
+          setPagination(res.pagination)
+        }
+      } catch {
+        // Fallback to sample problems if backend is starting or offline
+        if (isCancelled) return
+
+        const cleanQuery = search.trim().toLowerCase()
+        const serialQuery = cleanQuery.replace(/^#/, '')
+        const filtered = sampleProblems.filter((p) => {
+          const matchesDifficulty = filter === 'All' || p.difficulty === filter
+          const matchesSerial = cleanQuery.startsWith('#')
+            ? String(p.serialNo) === serialQuery
+            : String(p.serialNo) === cleanQuery
+          const matchesSearch =
+            !cleanQuery ||
+            matchesSerial ||
+            p.title.toLowerCase().includes(cleanQuery) ||
+            p.topic.toLowerCase().includes(cleanQuery)
+          return matchesDifficulty && matchesSearch
+        })
+        setProblems(
+          filtered.map((p) => ({
+            id: p.id,
+            serialNo: p.serialNo,
+            title: p.title,
+            difficulty: p.difficulty,
+            supportedLanguages: ['python', 'cpp', 'java', 'javascript'],
+            topic: p.topic,
+            acceptance: p.acceptance,
+            createdAt: new Date().toISOString(),
           }))
-          setProblems(withSerial)
-          if (res.pagination) {
-            setPagination(res.pagination)
-          }
-        }
-      })
-      .catch(() => {
-        // Fallback to sample problems if backend is offline
-        if (!isCancelled) {
-          const cleanQuery = search.trim().toLowerCase()
-          const isNum = cleanQuery.replace(/^#/, '')
-
-          const filtered = sampleProblems.filter((p) => {
-            const matchesDifficulty = filter === 'All' || p.difficulty === filter
-            const matchesSerial = cleanQuery.startsWith('#')
-              ? String(p.serialNo) === isNum
-              : String(p.serialNo) === cleanQuery
-            const matchesSearch =
-              !cleanQuery ||
-              matchesSerial ||
-              p.title.toLowerCase().includes(cleanQuery) ||
-              p.topic.toLowerCase().includes(cleanQuery)
-            return matchesDifficulty && matchesSearch
-          })
-
-          setProblems(
-            filtered.map((p) => ({
-              id: p.id,
-              serialNo: p.serialNo,
-              title: p.title,
-              difficulty: p.difficulty,
-              supportedLanguages: ['python', 'cpp', 'java', 'javascript'],
-              topic: p.topic,
-              acceptance: p.acceptance,
-              createdAt: new Date().toISOString(),
-            }))
-          )
-          setPagination({
-            page: 1,
-            limit: 10,
-            total: filtered.length,
-            totalPages: Math.ceil(filtered.length / 10) || 1,
-          })
-        }
-      })
-      .finally(() => {
+        )
+        setPagination({
+          page: 1,
+          limit: 10,
+          total: filtered.length,
+          totalPages: Math.ceil(filtered.length / 10) || 1,
+        })
+      } finally {
         if (!isCancelled) setLoading(false)
-      })
+      }
+    }
+
+    void loadProblems()
 
     return () => {
       isCancelled = true

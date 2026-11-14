@@ -33,6 +33,8 @@ const contestParticipantSchema = new Schema<IContestParticipant>(
 // one user can join a contest only once
 contestParticipantSchema.index({ contest: 1, user: 1 }, { unique: true });
 contestParticipantSchema.index({ contest: 1, isDisqualified: 1 });
+// student dashboard: count/fetch contests joined by one user
+contestParticipantSchema.index({ user: 1, joinedAt: -1 });
 
 export const ContestParticipant = model<IContestParticipant>(
   'ContestParticipant',

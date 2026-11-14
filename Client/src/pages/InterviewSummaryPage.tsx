@@ -32,7 +32,7 @@ export default function InterviewSummaryPage() {
         if (isMounted) {
           setSession(data)
         }
-      } catch (err) {
+      } catch {
         if (isMounted) {
           toast.error('Failed to load interview summary.')
         }
