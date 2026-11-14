@@ -7,6 +7,7 @@ import {
   Braces,
   ShieldAlert,
   Loader2,
+  ServerCrash,
   type LucideIcon,
 } from 'lucide-react'
 import type { Verdict } from '../../types/verdict'
@@ -23,7 +24,7 @@ const config: Record<Verdict, { label: string; tone: Tone; Icon: LucideIcon }> =
   TLE: { label: 'Time Limit Exceeded', tone: 'warn', Icon: Timer },
   RUNTIME_ERROR: { label: 'Runtime Error', tone: 'bad', Icon: TriangleAlert },
   COMPILE_ERROR: { label: 'Compile Error', tone: 'bad', Icon: Braces },
-  INTERNAL_ERROR: { label: 'Internal Error', tone: 'bad', Icon: TriangleAlert },
+  INTERNAL_ERROR: { label: 'Internal Error', tone: 'bad', Icon: ServerCrash },
   PLAGIARISM_FLAGGED: { label: 'Under review', tone: 'flag', Icon: ShieldAlert },
 }
 

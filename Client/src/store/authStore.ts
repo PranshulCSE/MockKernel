@@ -6,37 +6,73 @@ import type { AuthResponse, AuthUser, LoginPayload, RegisterPayload } from '../t
 interface AuthState {
   user: AuthUser | null
   accessToken: string | null
+  isHydrated: boolean
   login: (payload: LoginPayload) => Promise<void>
   register: (payload: RegisterPayload) => Promise<void>
-  loginWithGoogle: (googleIdToken: string) => Promise<void>
-  logout: () => void
+  loginWithGoogle: (googleToken: string) => Promise<void>
+  logout: () => Promise<void>
+  hydrate: () => Promise<void>
+  setUser: (user: AuthUser | null) => void
 }
 
-// Token storage in localStorage is TEMPORARY. The JWT storage strategy
-// (httpOnly cookie vs header) is an open decision owned by F1.
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => {
+    (set, get) => {
       const apply = ({ user, accessToken }: AuthResponse): void => {
-        set({ user, accessToken })
+        set({ user, accessToken, isHydrated: true })
       }
+
       return {
         user: null,
         accessToken: null,
+        isHydrated: false,
+        setUser: (user) => set({ user }),
         login: async (payload) => {
-          apply(await authApi.login(payload))
+          const res = await authApi.login(payload)
+          apply(res)
         },
         register: async (payload) => {
-          apply(await authApi.register(payload))
+          const res = await authApi.register(payload)
+          apply(res)
         },
-        loginWithGoogle: async (googleIdToken) => {
-          apply(await authApi.loginWithGoogle(googleIdToken))
+        loginWithGoogle: async (token) => {
+          const res = await authApi.loginWithGoogle(token)
+          apply(res)
         },
-        logout: () => {
-          set({ user: null, accessToken: null })
+        logout: async () => {
+          try {
+            await authApi.logout()
+          } catch {
+            // Best effort
+          } finally {
+            set({ user: null, accessToken: null, isHydrated: true })
+          }
+        },
+        hydrate: async () => {
+          const token = get().accessToken
+          if (!token) {
+            set({ user: null, isHydrated: true })
+            return
+          }
+          try {
+            const user = await authApi.getMe()
+            set({ user, isHydrated: true })
+          } catch {
+            // Token invalid or expired
+            set({ user: null, accessToken: null, isHydrated: true })
+          }
         },
       }
     },
-    { name: 'mk_auth', partialize: (s) => ({ user: s.user, accessToken: s.accessToken }) },
+    {
+      name: 'mk_auth',
+      partialize: (s) => ({ user: s.user, accessToken: s.accessToken }),
+      onRehydrateStorage: () => (state) => {
+        // Trigger hydration verification on load
+        if (state) {
+          void state.hydrate()
+        }
+      },
+    },
   ),
 )
