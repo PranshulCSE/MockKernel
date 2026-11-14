@@ -107,7 +107,7 @@ export default function InterviewRoomPage() {
           setCurrentQuestionText(last.question)
           setQuestionNumber(data.questions.length)
         }
-      } catch (err) {
+      } catch {
         if (!isMounted) return
         toast.error('Could not load interview session.', 'Error')
         navigate('/interviews')
@@ -118,8 +118,6 @@ export default function InterviewRoomPage() {
 
     if (!initialData) {
       void fetchSession()
-    } else {
-      setIsLoadingSession(false)
     }
 
     return () => {
@@ -130,7 +128,8 @@ export default function InterviewRoomPage() {
   // Automatically switch to manual typing if speech API unsupported or permission denied (Edge Case E1)
   useEffect(() => {
     if (!isSupported || permissionDenied) {
-      setManualTypingMode(true)
+      const enableTypingFallback = () => setManualTypingMode(true)
+      enableTypingFallback()
     }
   }, [isSupported, permissionDenied])
 

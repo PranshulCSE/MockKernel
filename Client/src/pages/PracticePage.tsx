@@ -35,50 +35,52 @@ export default function PracticePage() {
 
   useEffect(() => {
     let isCancelled = false
-    setLoading(true)
 
-    getProblems({ page, limit, search, difficulty: filter })
-      .then((res) => {
-        if (!isCancelled && res?.data) {
-          setProblems(res.data)
-          if (res.pagination) {
-            setPagination(res.pagination)
-          }
+    const loadProblems = async () => {
+      setLoading(true)
+      try {
+        const res = await getProblems({ page, limit, search, difficulty: filter })
+        if (isCancelled || !res?.data) return
+
+        setProblems(res.data)
+        if (res.pagination) {
+          setPagination(res.pagination)
         }
-      })
-      .catch(() => {
+      } catch {
         // Fallback to sample problems if backend is starting or offline
-        if (!isCancelled) {
-          const filtered = sampleProblems.filter((p) => {
-            const matchesDifficulty = filter === 'All' || p.difficulty === filter
-            const matchesSearch =
-              !search ||
-              p.title.toLowerCase().includes(search.toLowerCase()) ||
-              p.topic.toLowerCase().includes(search.toLowerCase())
-            return matchesDifficulty && matchesSearch
-          })
-          setProblems(
-            filtered.map((p) => ({
-              id: p.id,
-              title: p.title,
-              difficulty: p.difficulty,
-              supportedLanguages: ['python', 'cpp', 'java', 'javascript'],
-              topic: p.topic,
-              acceptance: p.acceptance,
-              createdAt: new Date().toISOString(),
-            }))
-          )
-          setPagination({
-            page: 1,
-            limit: 10,
-            total: filtered.length,
-            totalPages: Math.ceil(filtered.length / 10) || 1,
-          })
-        }
-      })
-      .finally(() => {
+        if (isCancelled) return
+
+        const filtered = sampleProblems.filter((p) => {
+          const matchesDifficulty = filter === 'All' || p.difficulty === filter
+          const matchesSearch =
+            !search ||
+            p.title.toLowerCase().includes(search.toLowerCase()) ||
+            p.topic.toLowerCase().includes(search.toLowerCase())
+          return matchesDifficulty && matchesSearch
+        })
+        setProblems(
+          filtered.map((p) => ({
+            id: p.id,
+            title: p.title,
+            difficulty: p.difficulty,
+            supportedLanguages: ['python', 'cpp', 'java', 'javascript'],
+            topic: p.topic,
+            acceptance: p.acceptance,
+            createdAt: new Date().toISOString(),
+          }))
+        )
+        setPagination({
+          page: 1,
+          limit: 10,
+          total: filtered.length,
+          totalPages: Math.ceil(filtered.length / 10) || 1,
+        })
+      } finally {
         if (!isCancelled) setLoading(false)
-      })
+      }
+    }
+
+    void loadProblems()
 
     return () => {
       isCancelled = true

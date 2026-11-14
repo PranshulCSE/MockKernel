@@ -11,23 +11,30 @@ export default function InterviewHistoryPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
 
-  const loadData = async (targetPage: number) => {
-    setIsLoading(true)
-    try {
-      const res = await listInterviews({ page: targetPage, limit: 10 })
-      setSessions(res.data || [])
-      setPage(res.pagination?.page || 1)
-      setTotalPages(res.pagination?.totalPages || 1)
-      setTotalItems(res.pagination?.total || (res.data ? res.data.length : 0))
-    } catch {
-      setSessions([])
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   useEffect(() => {
-    void loadData(page)
+    let cancelled = false
+
+    const loadData = async () => {
+      setIsLoading(true)
+      try {
+        const res = await listInterviews({ page, limit: 10 })
+        if (cancelled) return
+        setSessions(res.data || [])
+        setPage(res.pagination?.page || 1)
+        setTotalPages(res.pagination?.totalPages || 1)
+        setTotalItems(res.pagination?.total || (res.data ? res.data.length : 0))
+      } catch {
+        if (!cancelled) setSessions([])
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
+
+    void loadData()
+
+    return () => {
+      cancelled = true
+    }
   }, [page])
 
   const columns: Column<InterviewSession & Record<string, unknown>>[] = [

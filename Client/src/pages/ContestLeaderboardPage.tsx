@@ -43,13 +43,19 @@ export default function ContestLeaderboardPage() {
   // Fetch initial leaderboard and contest info
   useEffect(() => {
     if (!contestId) return
-    setLoading(true)
 
-    Promise.all([
-      getContestById(contestId).catch(() => null),
-      getContestLeaderboard(contestId).catch(() => null),
-    ])
-      .then(([contestData, lbData]) => {
+    let cancelled = false
+
+    const loadLeaderboard = async () => {
+      setLoading(true)
+      try {
+        const [contestData, lbData] = await Promise.all([
+          getContestById(contestId).catch(() => null),
+          getContestLeaderboard(contestId).catch(() => null),
+        ])
+
+        if (cancelled) return
+
         if (contestData) setContest(contestData)
 
         if (lbData?.entries && lbData.entries.length > 0) {
@@ -115,8 +121,16 @@ export default function ContestLeaderboardPage() {
             },
           ])
         }
-      })
-      .finally(() => setLoading(false))
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    void loadLeaderboard()
+
+    return () => {
+      cancelled = true
+    }
   }, [contestId, currentUser])
 
   // Real-time socket leaderboard updates

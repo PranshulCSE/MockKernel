@@ -27,17 +27,21 @@ export default function ContestsPage() {
   const [joiningId, setJoiningId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
-  const fetchContestList = () => {
-    setLoading(true)
-    getContests({
-      status: filter === 'all' ? undefined : (filter as 'live' | 'ended'),
-    })
-      .then((res) => {
+  useEffect(() => {
+    let cancelled = false
+
+    const fetchContestList = async () => {
+      setLoading(true)
+      try {
+        const res = await getContests({
+          status: filter === 'all' ? undefined : (filter as 'live' | 'ended'),
+        })
+        if (cancelled) return
         if (res?.data) {
           setContests(res.data)
         }
-      })
-      .catch(() => {
+      } catch {
+        if (cancelled) return
         // Mock fallback if backend has no live contests seeded yet
         const now = Date.now()
         setContests([
@@ -66,12 +70,16 @@ export default function ContestsPage() {
             hasJoined: true,
           },
         ])
-      })
-      .finally(() => setLoading(false))
-  }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
 
-  useEffect(() => {
-    fetchContestList()
+    void fetchContestList()
+
+    return () => {
+      cancelled = true
+    }
   }, [filter])
 
   const handleJoin = async (contestId: string) => {
@@ -87,8 +95,8 @@ export default function ContestsPage() {
       await joinContest(contestId)
       // Navigate straight to the live arena
       navigate(`/contests/${contestId}`)
-    } catch (err: any) {
-      setActionError(err?.message || 'Could not join contest')
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : 'Could not join contest')
     } finally {
       setJoiningId(null)
     }

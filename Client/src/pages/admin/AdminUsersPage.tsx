@@ -64,9 +64,12 @@ export default function AdminUsersPage() {
   )
 
   useEffect(() => {
-    if (isSuperAdmin) {
-      void loadUsers(page)
+    if (!isSuperAdmin) return
+
+    const run = async () => {
+      await loadUsers(page)
     }
+    void run()
   }, [page, isSuperAdmin, loadUsers])
 
   const handleCreateAdmin = async () => {

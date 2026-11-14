@@ -1,5 +1,6 @@
 import { useAuthStore } from '../store/authStore'
 import type { Difficulty } from '../features/practice/problems'
+import type { Verdict } from '../types/verdict'
 
 const API_BASE_URL =
   (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL ||
@@ -90,6 +91,16 @@ export interface SubmissionRequest {
   contestId?: string
 }
 
+export interface SubmissionHistoryItem {
+  id?: string
+  _id?: string
+  verdict: Verdict
+  language: string
+  runtime?: number
+  memory?: number
+  createdAt: string
+}
+
 export async function runCode(req: SubmissionRequest) {
   const res = await fetch(`${API_BASE_URL}/api/submissions/run`, {
     method: 'POST',
@@ -134,13 +145,13 @@ export async function submitCode(req: SubmissionRequest) {
   return json.data
 }
 
-export async function getSubmissions(problemId?: string) {
+export async function getSubmissions(problemId?: string): Promise<SubmissionHistoryItem[]> {
   const query = problemId ? `?problemId=${problemId}` : ''
   const res = await fetch(`${API_BASE_URL}/api/submissions${query}`, {
     headers: getAuthHeaders(),
   })
 
   if (!res.ok) return []
-  const json = await res.json()
+  const json = (await res.json()) as { data?: SubmissionHistoryItem[] }
   return json.data || []
 }

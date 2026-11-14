@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router'
 import { useAuthStore } from '../../store/authStore'
-import { toast } from '../ui/Toast'
+import { toast } from '../ui/toast-context'
 import type { UserRole } from '../../types/auth'
 
 export function RequireAuth() {
