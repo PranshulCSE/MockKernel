@@ -1,6 +1,7 @@
 import axios, { AxiosError, type AxiosInstance } from 'axios';
 import { getWorkerEnvConfig } from '../config/env.js';
 import type { SubmissionVerdict, SupportedLanguage } from '../models/Submission.js';
+import { getLocalRunnerService, type LocalRunnerService } from './localRunner.js';
 
 export const LANGUAGE_ID_MAP: Record<SupportedLanguage, number> = {
   python: 71,
@@ -89,12 +90,14 @@ export class Judge0Service {
   private maxPollAttempts: number;
   private executionTimeoutMs: number;
   private sleep: (ms: number) => Promise<void>;
+  private localRunner: LocalRunnerService;
 
   constructor(options: Judge0ServiceOptions = {}) {
     const env = getWorkerEnvConfig();
     const apiUrl = options.apiUrl ?? env.judge0ApiUrl;
     const apiKey = options.apiKey ?? env.judge0ApiKey;
 
+    this.localRunner = getLocalRunnerService();
     this.pollIntervalMs = options.pollIntervalMs ?? env.pollIntervalMs;
     this.maxPollAttempts = options.maxPollAttempts ?? env.maxPollAttempts;
     this.executionTimeoutMs = options.executionTimeoutMs ?? DEFAULT_EXECUTION_TIMEOUT_MS;
@@ -209,6 +212,9 @@ export class Judge0Service {
   }
 
   public async checkHealth(): Promise<{ ok: boolean; message?: string }> {
+    if (process.env.USE_LOCAL_RUNNER === 'true' || process.env.JUDGE0_API_URL === 'local') {
+      return this.localRunner.checkHealth();
+    }
     try {
       const res = await this.client.get('/about');
       if (res.status >= 200 && res.status < 300) {
@@ -216,6 +222,9 @@ export class Judge0Service {
       }
       return { ok: false, message: `HTTP ${res.status}` };
     } catch (error) {
+      if (process.env.USE_LOCAL_RUNNER === 'true' || process.env.NODE_ENV === 'development') {
+        return this.localRunner.checkHealth();
+      }
       const wrapped = this.wrapAxiosError(error, 'health check');
       return { ok: false, message: wrapped.message };
     }
@@ -338,47 +347,79 @@ export class Judge0Service {
     cpuTimeLimit?: number,
     memoryLimit?: number
   ): Promise<ExecutionResult> {
-    const languageId = LANGUAGE_ID_MAP[language];
-    if (!languageId) {
-      throw new Judge0Error(
-        'UNSUPPORTED_LANGUAGE',
-        `Unsupported language: ${language}`,
-        { retryable: false }
+    if (process.env.USE_LOCAL_RUNNER === 'true' || process.env.JUDGE0_API_URL === 'local') {
+      return this.localRunner.executeTestCase(
+        sourceCode,
+        language,
+        stdin,
+        expectedOutput,
+        cpuTimeLimit,
+        memoryLimit
       );
     }
 
-    const payload: Judge0SubmissionPayload = {
-      source_code: sourceCode,
-      language_id: languageId,
-      stdin: stdin ?? '',
-      ...(expectedOutput !== undefined ? { expected_output: expectedOutput } : {}),
-      ...(cpuTimeLimit !== undefined ? { cpu_time_limit: cpuTimeLimit } : {}),
-      ...(memoryLimit !== undefined ? { memory_limit: memoryLimit } : {}),
-    };
+    try {
+      const languageId = LANGUAGE_ID_MAP[language];
+      if (!languageId) {
+        throw new Judge0Error(
+          'UNSUPPORTED_LANGUAGE',
+          `Unsupported language: ${language}`,
+          { retryable: false }
+        );
+      }
 
-    const token = await this.submitCode(payload);
-    const result = await this.pollSubmission(token);
+      const payload: Judge0SubmissionPayload = {
+        source_code: sourceCode,
+        language_id: languageId,
+        stdin: stdin ?? '',
+        ...(expectedOutput !== undefined ? { expected_output: expectedOutput } : {}),
+        ...(cpuTimeLimit !== undefined ? { cpu_time_limit: cpuTimeLimit } : {}),
+        ...(memoryLimit !== undefined ? { memory_limit: memoryLimit } : {}),
+      };
 
-    const verdict = this.mapStatusToVerdict(result.status.id);
-    const passed = verdict === 'ACCEPTED';
-    const parsedTime =
-      result.time !== undefined && result.time !== null
-        ? Number.parseFloat(result.time)
-        : Number.NaN;
-    const runtimeMs = Number.isFinite(parsedTime)
-      ? Math.round(parsedTime * 1000)
-      : undefined;
+      const token = await this.submitCode(payload);
+      const result = await this.pollSubmission(token);
 
-    return {
-      token,
-      verdict,
-      passed,
-      runtime: runtimeMs,
-      memory: result.memory ?? undefined,
-      stdout: result.stdout ?? undefined,
-      stderr: result.stderr ?? undefined,
-      compileOutput: result.compile_output ?? undefined,
-    };
+      const verdict = this.mapStatusToVerdict(result.status.id);
+      const passed = verdict === 'ACCEPTED';
+      const parsedTime =
+        result.time !== undefined && result.time !== null
+          ? Number.parseFloat(result.time)
+          : Number.NaN;
+      const runtimeMs = Number.isFinite(parsedTime)
+        ? Math.round(parsedTime * 1000)
+        : undefined;
+
+      return {
+        token,
+        verdict,
+        passed,
+        runtime: runtimeMs,
+        memory: result.memory ?? undefined,
+        stdout: result.stdout ?? undefined,
+        stderr: result.stderr ?? undefined,
+        compileOutput: result.compile_output ?? undefined,
+      };
+    } catch (error) {
+      if (
+        (error instanceof Judge0Error &&
+          (error.code === 'JUDGE0_UNREACHABLE' || error.code === 'JUDGE0_TIMEOUT')) ||
+        process.env.NODE_ENV === 'development'
+      ) {
+        console.warn(
+          `[Worker] Judge0 unavailable (${(error as Error).message}). Executing via Local Code Runner.`
+        );
+        return this.localRunner.executeTestCase(
+          sourceCode,
+          language,
+          stdin,
+          expectedOutput,
+          cpuTimeLimit,
+          memoryLimit
+        );
+      }
+      throw error;
+    }
   }
 }
 

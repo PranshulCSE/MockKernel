@@ -338,7 +338,7 @@ function parseListOptions(req: Request, includeUnpublished: boolean): ListOption
   const search = readQueryString(req.query.search, 'search');
   if (search) {
     const numMatch = search.trim().match(/^#?(\d+)$/);
-    if (numMatch) {
+    if (numMatch && numMatch[1]) {
       (filter as any).$or = [
         { serialNo: parseInt(numMatch[1], 10) },
         { title: { $regex: escapeRegex(search), $options: 'i' } },

@@ -95,7 +95,7 @@ export async function startInterviewSession(
   const questionCount = readInteger(body.questionCount, 'questionCount', 1, 20);
 
   const firstTurn = await generateNextQuestion({
-    topics,
+    topics: topics as any,
     difficulty,
     questionCount,
     history: [],
@@ -112,7 +112,7 @@ export async function startInterviewSession(
   const now = new Date();
   const session = await InterviewSession.create({
     user: new Types.ObjectId(authUser.id),
-    topics,
+    topics: topics as any,
     difficulty,
     questionCount,
     status: 'in_progress',
