@@ -19,6 +19,10 @@ import {
 } from './routes/contestRoutes.js';
 import { interviewRouter } from './routes/interviewRoutes.js';
 import {
+  adminAssessmentRouter,
+  publicAssessmentRouter,
+} from './routes/assessmentRoutes.js';
+import {
   adminProblemRouter,
   publicProblemRouter,
 } from './routes/problemRoutes.js';
@@ -40,6 +44,7 @@ export function createApp(options: CreateAppOptions = {}): Express {
   app.use(helmet());
   app.use(createCorsMiddleware(options.corsOrigins));
   app.use(express.json({ limit: '5mb' }));
+  app.use(express.text({ limit: '5mb' }));
   app.use(express.urlencoded({ extended: true, limit: '5mb' }));
   app.use(sanitizeInput);
 
@@ -58,6 +63,8 @@ export function createApp(options: CreateAppOptions = {}): Express {
   app.use('/api/admin/problems', adminProblemRouter);
   app.use('/api/contests', publicContestRouter);
   app.use('/api/admin/contests', adminContestRouter);
+  app.use('/api/assessments', publicAssessmentRouter);
+  app.use('/api/admin/assessments', adminAssessmentRouter);
   app.use('/api/submissions', submissionRouter);
   app.use('/api/interviews', interviewRouter);
 

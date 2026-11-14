@@ -56,3 +56,19 @@ export {
   INTERVIEW_TOPICS,
   type InterviewTopic,
 } from './InterviewSession.js';
+export {
+  Assessment,
+  type IAssessment,
+  type AssessmentDocument,
+  ASSESSMENT_STATUSES,
+  type AssessmentStatus,
+} from './Assessment.js';
+export {
+  AssessmentSession,
+  type IAssessmentSession,
+  type AssessmentSessionDocument,
+  ASSESSMENT_SESSION_STATUSES,
+  type AssessmentSessionStatus,
+  type IViolationLog,
+  type ICodeSubmissionItem,
+} from './AssessmentSession.js';
