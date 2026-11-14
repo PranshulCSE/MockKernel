@@ -7,6 +7,7 @@ const API_BASE_URL =
 
 export interface ProblemSummary {
   id: string
+  serialNo?: number
   title: string
   difficulty: Difficulty
   supportedLanguages: string[]
