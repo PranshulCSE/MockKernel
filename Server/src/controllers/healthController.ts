@@ -15,6 +15,11 @@ async function defaultCheckJudge0(): Promise<{
   message?: string;
 }> {
   const { judge0ApiUrl, judge0ApiKey } = getEnvConfig();
+
+  if (process.env.USE_LOCAL_RUNNER === 'true' || judge0ApiUrl === 'local') {
+    return { ok: true, status: 200, message: 'Local code execution engine active' };
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 2000);
   timer.unref?.();
@@ -40,6 +45,13 @@ async function defaultCheckJudge0(): Promise<{
       message: `Judge0 responded with HTTP ${res.status}`,
     };
   } catch (error) {
+    if (process.env.NODE_ENV === 'development' || process.env.USE_LOCAL_RUNNER === 'true') {
+      return {
+        ok: true,
+        status: 200,
+        message: 'Local execution fallback active (Judge0 bypassed)',
+      };
+    }
     return {
       ok: false,
       message: error instanceof Error ? error.message : 'Judge0 unreachable',

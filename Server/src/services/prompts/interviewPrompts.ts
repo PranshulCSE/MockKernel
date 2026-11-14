@@ -11,7 +11,7 @@ export interface InterviewTurnHistory {
 }
 
 export function buildSystemPrompt(params: {
-  topics: InterviewTopic[];
+  topics: string[];
   difficulty: Difficulty;
   questionCount: number;
   questionNumber: number;
@@ -80,7 +80,7 @@ export function buildUserMessage(
 }
 
 export function buildFinalFeedbackPrompt(params: {
-  topics: InterviewTopic[];
+  topics: string[];
   difficulty: Difficulty;
   history: InterviewTurnHistory[];
 }): { system: string; user: string } {

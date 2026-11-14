@@ -337,10 +337,18 @@ function parseListOptions(req: Request, includeUnpublished: boolean): ListOption
 
   const search = readQueryString(req.query.search, 'search');
   if (search) {
-    filter.title = {
-      $regex: escapeRegex(search),
-      $options: 'i',
-    };
+    const numMatch = search.trim().match(/^#?(\d+)$/);
+    if (numMatch && numMatch[1]) {
+      (filter as any).$or = [
+        { serialNo: parseInt(numMatch[1], 10) },
+        { title: { $regex: escapeRegex(search), $options: 'i' } },
+      ];
+    } else {
+      filter.title = {
+        $regex: escapeRegex(search),
+        $options: 'i',
+      };
+    }
   }
 
   const difficulty = readQueryString(req.query.difficulty, 'difficulty');
@@ -380,6 +388,7 @@ function parseListOptions(req: Request, includeUnpublished: boolean): ListOption
 function toPublicSummary(problem: ProblemDocument) {
   return {
     id: problem.id,
+    serialNo: problem.serialNo,
     title: problem.title,
     difficulty: problem.difficulty,
     supportedLanguages: problem.supportedLanguages,
