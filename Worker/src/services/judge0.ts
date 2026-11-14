@@ -9,6 +9,12 @@ export const LANGUAGE_ID_MAP: Record<SupportedLanguage, number> = {
   javascript: 63,
 };
 
+/**
+ * PRD execution SLA: a hanging Judge0 execution must be classified as TLE
+ * within 10 seconds, regardless of the configured polling attempt count.
+ */
+export const DEFAULT_EXECUTION_TIMEOUT_MS = 10_000;
+
 export interface Judge0SubmissionPayload {
   source_code: string;
   language_id: number;
@@ -68,6 +74,7 @@ export interface Judge0ServiceOptions {
   apiKey?: string;
   pollIntervalMs?: number;
   maxPollAttempts?: number;
+  executionTimeoutMs?: number;
   client?: AxiosInstance;
   sleep?: (ms: number) => Promise<void>;
 }
@@ -80,6 +87,7 @@ export class Judge0Service {
   private client: AxiosInstance;
   private pollIntervalMs: number;
   private maxPollAttempts: number;
+  private executionTimeoutMs: number;
   private sleep: (ms: number) => Promise<void>;
 
   constructor(options: Judge0ServiceOptions = {}) {
@@ -89,6 +97,7 @@ export class Judge0Service {
 
     this.pollIntervalMs = options.pollIntervalMs ?? env.pollIntervalMs;
     this.maxPollAttempts = options.maxPollAttempts ?? env.maxPollAttempts;
+    this.executionTimeoutMs = options.executionTimeoutMs ?? DEFAULT_EXECUTION_TIMEOUT_MS;
     this.sleep = options.sleep ?? defaultSleep;
 
     if (options.client) {
@@ -233,16 +242,59 @@ export class Judge0Service {
     }
   }
 
+  private createPollTimeoutError(token: string): Judge0Error {
+    return new Judge0Error(
+      'JUDGE0_POLL_TIMEOUT',
+      `Judge0 execution did not complete within the ${this.executionTimeoutMs}ms timeout guard for token ${token}.`,
+      { retryable: false }
+    );
+  }
+
+  private async getWithDeadline<T>(
+    url: string,
+    deadline: number,
+    token: string
+  ): Promise<{ data: T }> {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) {
+      throw this.createPollTimeoutError(token);
+    }
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        this.client.get<T>(url),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () => reject(this.createPollTimeoutError(token)),
+            remainingMs
+          );
+        }),
+      ]);
+    } finally {
+      if (timer !== undefined) {
+        clearTimeout(timer);
+      }
+    }
+  }
+
   public async pollSubmission(token: string): Promise<Judge0Response> {
+    const deadline = Date.now() + this.executionTimeoutMs;
     let attempts = 0;
 
     while (attempts < this.maxPollAttempts) {
+      if (Date.now() >= deadline) {
+        break;
+      }
+
       attempts++;
 
       let data: Judge0Response;
       try {
-        const response = await this.client.get<Judge0Response>(
-          `/submissions/${token}?base64_encoded=false`
+        const response = await this.getWithDeadline<Judge0Response>(
+          `/submissions/${token}?base64_encoded=false`,
+          deadline,
+          token
         );
         data = response.data;
       } catch (error) {
@@ -263,16 +315,15 @@ export class Judge0Service {
         return data;
       }
 
-      if (attempts < this.maxPollAttempts) {
-        await this.sleep(this.pollIntervalMs);
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0 || attempts >= this.maxPollAttempts) {
+        break;
       }
+
+      await this.sleep(Math.min(this.pollIntervalMs, remainingMs));
     }
 
-    throw new Judge0Error(
-      'JUDGE0_POLL_TIMEOUT',
-      `Judge0 polling timed out after ${this.maxPollAttempts} attempts for token ${token}.`,
-      { retryable: true }
-    );
+    throw this.createPollTimeoutError(token);
   }
 
   /**

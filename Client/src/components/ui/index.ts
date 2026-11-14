@@ -11,6 +11,8 @@ export { Skeleton } from './Skeleton'
 export { EmptyState } from './EmptyState'
 export { Tabs } from './Tabs'
 export { Drawer } from './Drawer'
+export { ResizablePanels } from './ResizablePanels'
+export { Timer } from './Timer'
 
 export type { Column, DataTableProps } from './DataTable'
 export type { TabItem, TabsProps } from './Tabs'

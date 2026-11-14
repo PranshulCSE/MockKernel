@@ -91,7 +91,43 @@ describe('Judge0Service', () => {
     expect(res.compileOutput).toBe('SyntaxError: invalid syntax');
   });
 
-  it('throws retryable Judge0Error on poll timeout and network errors, non-retryable on 401', async () => {
+  it('enforces the 10s hard execution guard when Judge0 keeps processing', async () => {
+    let now = 0;
+    const dateNowSpy = vi.spyOn(Date, 'now').mockImplementation(() => now);
+    const postMock = vi.fn().mockResolvedValue({ data: { token: 'tok-hang' } });
+    const getMock = vi.fn().mockResolvedValue({
+      data: { token: 'tok-hang', status: { id: 2, description: 'Processing' } },
+    });
+    const sleep = vi.fn(async (ms: number) => {
+      now += ms;
+    });
+
+    const service = new Judge0Service({
+      client: { post: postMock, get: getMock } as unknown as AxiosInstance,
+      pollIntervalMs: 1000,
+      maxPollAttempts: 100,
+      executionTimeoutMs: 10_000,
+      sleep,
+    });
+
+    try {
+      await expect(
+        service.executeTestCase('while True: pass', 'python', '', '')
+      ).rejects.toMatchObject({
+        name: 'Judge0Error',
+        code: 'JUDGE0_POLL_TIMEOUT',
+        retryable: false,
+      });
+    } finally {
+      dateNowSpy.mockRestore();
+    }
+
+    expect(now).toBeLessThanOrEqual(10_000);
+    expect(now).toBeGreaterThanOrEqual(9_000);
+    expect(getMock.mock.calls.length).toBeLessThanOrEqual(10);
+  });
+
+  it('throws non-retryable Judge0Error on poll timeout and retryable errors on network failures, non-retryable on 401', async () => {
     const postMock = vi.fn().mockResolvedValue({ data: { token: 'tok-timeout' } });
     const getMock = vi.fn().mockResolvedValue({
       data: { token: 'tok-timeout', status: { id: 2, description: 'Processing' } },
@@ -107,7 +143,7 @@ describe('Judge0Service', () => {
     await expect(service.executeTestCase('while True: pass', 'python', '', '')).rejects.toMatchObject({
       name: 'Judge0Error',
       code: 'JUDGE0_POLL_TIMEOUT',
-      retryable: true,
+      retryable: false,
     });
 
     const authErr = new AxiosError('Unauthorized', 'ERR_BAD_REQUEST', undefined, undefined, {
