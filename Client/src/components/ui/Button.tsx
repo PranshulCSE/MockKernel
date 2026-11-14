@@ -10,6 +10,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: Size
   loading?: boolean
   leftIcon?: ReactNode
+  rightIcon?: ReactNode
 }
 
 const variants: Record<Variant, string> = {
@@ -31,6 +32,7 @@ export function Button({
   size = 'md',
   loading = false,
   leftIcon,
+  rightIcon,
   disabled,
   className,
   children,
@@ -58,6 +60,7 @@ export function Button({
         leftIcon
       )}
       {children}
+      {!loading && rightIcon}
     </button>
   )
 }
