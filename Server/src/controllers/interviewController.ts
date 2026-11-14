@@ -27,7 +27,7 @@ import {
 
 const MAX_ANSWER_LENGTH = 5000;
 
-function parseTopics(value: unknown): InterviewTopic[] {
+function parseTopics(value: unknown): string[] {
   if (!Array.isArray(value) || value.length === 0) {
     throw new HttpError(
       400,
@@ -36,19 +36,16 @@ function parseTopics(value: unknown): InterviewTopic[] {
     );
   }
 
-  const unique: InterviewTopic[] = [];
+  const unique: string[] = [];
   for (const item of value) {
-    if (
-      typeof item !== 'string' ||
-      !(INTERVIEW_TOPICS as readonly string[]).includes(item)
-    ) {
+    if (typeof item !== 'string' || item.trim().length < 2 || item.trim().length > 100) {
       throw new HttpError(
         400,
         'VALIDATION_ERROR',
-        `Invalid topic. Allowed values: ${INTERVIEW_TOPICS.join(', ')}.`
+        'Each topic must be a non-empty string between 2 and 100 characters.'
       );
     }
-    const topic = item as InterviewTopic;
+    const topic = item.trim();
     if (!unique.includes(topic)) {
       unique.push(topic);
     }

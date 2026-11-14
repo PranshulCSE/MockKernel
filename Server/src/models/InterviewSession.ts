@@ -73,10 +73,10 @@ const interviewSessionSchema = new Schema<IInterviewSession>(
       },
     },
     topics: {
-      type: [{ type: String, enum: INTERVIEW_TOPICS }],
+      type: [String],
       required: true,
       validate: {
-        validator: (v: InterviewTopic[]) =>
+        validator: (v: string[]) =>
           Array.isArray(v) && v.length > 0 && new Set(v).size === v.length,
         message: 'At least one unique topic is required',
       },
