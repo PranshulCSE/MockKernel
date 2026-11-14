@@ -12,6 +12,8 @@ export interface LeaderboardEntry {
   userId: string;
   name: string;
   score: number;
+  problemsSolved?: number;
+  lastSubmissionTime?: string;
 }
 
 export interface LeaderboardRedisClient {
@@ -420,20 +422,62 @@ export async function getLeaderboard(
   }
 
   const userIds = scored.map((entry) => new Types.ObjectId(entry.userId));
-  const users = await User.find({ _id: { $in: userIds } })
-    .select('name')
-    .lean()
-    .exec();
+  const [users, acceptedSubmissions] = await Promise.all([
+    User.find({ _id: { $in: userIds } })
+      .select('name')
+      .lean()
+      .exec(),
+    Submission.aggregate<{
+      _id: Types.ObjectId;
+      problemsCount: number;
+      lastAccepted: Date;
+    }>([
+      {
+        $match: {
+          contest: new Types.ObjectId(contestId),
+          user: { $in: userIds },
+          verdict: 'ACCEPTED',
+          mode: 'submit',
+        },
+      },
+      {
+        $group: {
+          _id: '$user',
+          problemIds: { $addToSet: '$problem' },
+          lastAccepted: { $max: '$createdAt' },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          problemsCount: { $size: '$problemIds' },
+          lastAccepted: 1,
+        },
+      },
+    ]).exec(),
+  ]);
+
+  const solvedMap = new Map(
+    acceptedSubmissions.map((s) => [
+      s._id.toString(),
+      { count: s.problemsCount, lastTime: s.lastAccepted?.toISOString() },
+    ])
+  );
 
   const nameById = new Map(users.map((u) => [u._id.toString(), u.name]));
   const startOffset = (page - 1) * limit;
 
-  const entries: LeaderboardEntry[] = scored.map((entry, idx) => ({
-    rank: startOffset + idx + 1,
-    userId: entry.userId,
-    name: nameById.get(entry.userId) ?? 'Unknown',
-    score: entry.score,
-  }));
+  const entries: LeaderboardEntry[] = scored.map((entry, idx) => {
+    const solvedInfo = solvedMap.get(entry.userId);
+    return {
+      rank: startOffset + idx + 1,
+      userId: entry.userId,
+      name: nameById.get(entry.userId) ?? 'Unknown',
+      score: entry.score,
+      problemsSolved: solvedInfo?.count ?? 0,
+      lastSubmissionTime: solvedInfo?.lastTime,
+    };
+  });
 
   return {
     entries,

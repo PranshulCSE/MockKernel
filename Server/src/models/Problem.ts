@@ -13,6 +13,7 @@ export const SUPPORTED_LANGUAGES = [
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
 export interface IProblem {
+  serialNo?: number;
   title: string;
   statement: string;
   difficulty: Difficulty;
@@ -29,6 +30,7 @@ export type ProblemDocument = HydratedDocument<IProblem>;
 
 const problemSchema = new Schema<IProblem>(
   {
+    serialNo: { type: Number, index: true },
     title: {
       type: String,
       required: true,
