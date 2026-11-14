@@ -83,7 +83,7 @@ export default function AdminProblemsPage() {
         setPage(res.pagination?.page || 1)
         setTotalPages(res.pagination?.totalPages || 1)
         setTotalItems(res.pagination?.total || 0)
-      } catch (err) {
+      } catch {
         toast.error('Failed to load problems.')
       } finally {
         setIsLoading(false)
@@ -93,7 +93,10 @@ export default function AdminProblemsPage() {
   )
 
   useEffect(() => {
-    void loadProblems(page)
+    const run = async () => {
+      await loadProblems(page)
+    }
+    void run()
   }, [page, loadProblems])
 
   const openCreateDrawer = () => {

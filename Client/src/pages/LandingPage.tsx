@@ -34,29 +34,29 @@ export default function LandingPage() {
   const user = useAuthStore((s) => s.user)
 
   return (
-    <div className="flex flex-col gap-24">
-      <section className="grid items-center gap-12 lg:grid-cols-[1.1fr_1fr]">
-        <div className="flex flex-col items-start gap-6">
-          <h1 className="text-5xl font-bold leading-[1.05] sm:text-6xl">
+    <div className="flex flex-col gap-12 sm:gap-20">
+      <section className="grid items-center gap-8 lg:gap-12 lg:grid-cols-[1.1fr_1fr]">
+        <div className="flex flex-col items-start gap-5 sm:gap-6">
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold leading-[1.15] sm:leading-[1.05]">
             Solve it.
             <br />
             Then explain it.
           </h1>
-          <p className="max-w-lg text-lg text-muted">
+          <p className="max-w-lg text-sm sm:text-lg text-muted leading-relaxed">
             Practice coding problems in a sandboxed editor, then talk through your approach with an
             AI interviewer that adapts to your answers.
           </p>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-3 w-full sm:w-auto">
             <Link
               to={user ? '/practice' : '/signup'}
-              className="inline-flex h-14 items-center gap-2 rounded-full bg-brand px-8 text-[1rem] font-semibold shadow-glow transition hover:brightness-110"
+              className="inline-flex h-12 sm:h-14 items-center justify-center gap-2 rounded-full bg-brand px-6 sm:px-8 text-sm sm:text-[1rem] font-semibold shadow-glow transition hover:brightness-110"
             >
               {user ? 'Continue practicing' : 'Get started free'}
-              <ArrowRight className="size-5" aria-hidden />
+              <ArrowRight className="size-4 sm:size-5" aria-hidden />
             </Link>
             <Link
               to="/interview"
-              className="inline-flex h-14 items-center rounded-full border border-white/10 bg-white/5 px-8 text-[1rem] font-semibold backdrop-blur-xl transition hover:bg-white/10"
+              className="inline-flex h-12 sm:h-14 items-center justify-center rounded-full border border-white/10 bg-white/5 px-6 sm:px-8 text-sm sm:text-[1rem] font-semibold backdrop-blur-xl transition hover:bg-white/10"
             >
               Try a mock interview
             </Link>

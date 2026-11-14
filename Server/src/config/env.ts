@@ -38,6 +38,8 @@ export interface EnvConfig {
   googleClientId?: string;
   groqApiKey?: string;
   groqModel: string;
+  geminiApiKey?: string;
+  geminiModel: string;
   judge0ApiUrl: string;
   judge0ApiKey?: string;
   submissionQueueName: string;
@@ -179,6 +181,10 @@ export function getEnvConfig(): EnvConfig {
       ? { groqApiKey: process.env.GROQ_API_KEY.trim() }
       : {}),
     groqModel: process.env.GROQ_MODEL?.trim() || 'llama-3.3-70b-versatile',
+    ...(process.env.GEMINI_API_KEY?.trim()
+      ? { geminiApiKey: process.env.GEMINI_API_KEY.trim() }
+      : {}),
+    geminiModel: process.env.GEMINI_MODEL?.trim() || 'gemini-2.0-flash',
     judge0ApiUrl: (process.env.JUDGE0_API_URL?.trim() || 'http://localhost:2358').replace(/\/+$/, ''),
     ...(process.env.JUDGE0_API_KEY?.trim()
       ? { judge0ApiKey: process.env.JUDGE0_API_KEY.trim() }

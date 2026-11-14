@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Clock, AlertTriangle } from 'lucide-react'
 import { cn } from '../../lib/cn'
 
@@ -25,7 +25,7 @@ export function Timer({
   className,
   showIcon = true,
 }: TimerProps) {
-  const calculateRemainingSeconds = (): number => {
+  const calculateRemainingSeconds = useCallback((): number => {
     if (targetTime !== undefined) {
       const targetMs = new Date(targetTime).getTime()
       const nowMs = Date.now()
@@ -35,19 +35,26 @@ export function Timer({
       return Math.max(0, initialSeconds)
     }
     return 0
-  }
+  }, [targetTime, initialSeconds])
+
+  const onExpireRef = useRef(onExpire)
 
   const [secondsLeft, setSecondsLeft] = useState<number>(calculateRemainingSeconds)
 
   useEffect(() => {
+    onExpireRef.current = onExpire
+  }, [onExpire])
+
+  useEffect(() => {
     // Reset if targetTime changes
-    setSecondsLeft(calculateRemainingSeconds())
+    const reset = () => setSecondsLeft(calculateRemainingSeconds())
+    reset()
 
     const interval = setInterval(() => {
       setSecondsLeft((prev) => {
         if (prev <= 1) {
           clearInterval(interval)
-          if (onExpire) onExpire()
+          onExpireRef.current?.()
           return 0
         }
         return prev - 1
@@ -55,7 +62,7 @@ export function Timer({
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [targetTime, initialSeconds])
+  }, [calculateRemainingSeconds])
 
   // Warning state when less than 5 minutes remain (300 seconds)
   const isUrgent = secondsLeft > 0 && secondsLeft < 300

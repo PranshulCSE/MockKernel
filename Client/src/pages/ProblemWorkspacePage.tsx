@@ -101,6 +101,7 @@ export default function ProblemWorkspacePage() {
   // Console / Output State
   const [consoleTab, setConsoleTab] = useState<'testcases' | 'output'>('testcases')
   const [selectedTestCaseIndex, setSelectedTestCaseIndex] = useState(0)
+  const [mobileTab, setMobileTab] = useState<'problem' | 'code' | 'console'>('problem')
   const [customInput, setCustomInput] = useState('')
   const [useCustomInput, setUseCustomInput] = useState(false)
 
@@ -125,13 +126,16 @@ export default function ProblemWorkspacePage() {
   // 1. Fetch Problem Details
   useEffect(() => {
     if (!id) return
-    setLoadingProblem(true)
 
-    getProblemById(id)
-      .then((data) => {
-        setProblem(data)
-      })
-      .catch(() => {
+    let cancelled = false
+
+    const loadProblem = async () => {
+      setLoadingProblem(true)
+      try {
+        const data = await getProblemById(id)
+        if (!cancelled) setProblem(data)
+      } catch {
+        if (cancelled) return
         // Fallback mock problem for local development
         setProblem({
           id,
@@ -166,10 +170,16 @@ You can return the answer in any order.`,
           ],
           createdAt: new Date().toISOString(),
         })
-      })
-      .finally(() => {
-        setLoadingProblem(false)
-      })
+      } finally {
+        if (!cancelled) setLoadingProblem(false)
+      }
+    }
+
+    void loadProblem()
+
+    return () => {
+      cancelled = true
+    }
   }, [id])
 
   // 2. Draft Persistence & Starter Code Loading
@@ -183,13 +193,17 @@ You can return the answer in any order.`,
       DEFAULT_STARTER_CODES[language] ||
       '// Write solution here\n'
 
-    if (savedDraft !== null) {
-      setCode(savedDraft)
-      setIsDirty(savedDraft !== defaultCode)
-    } else {
-      setCode(defaultCode)
-      setIsDirty(false)
+    const applyDraft = () => {
+      if (savedDraft !== null) {
+        setCode(savedDraft)
+        setIsDirty(savedDraft !== defaultCode)
+      } else {
+        setCode(defaultCode)
+        setIsDirty(false)
+      }
     }
+
+    applyDraft()
   }, [id, language, problem])
 
   // Save draft on code edit
@@ -230,14 +244,19 @@ You can return the answer in any order.`,
   }
 
   // Load submissions history
-  const loadHistory = () => {
-    if (!id) return
-    setLoadingHistory(true)
-    getSubmissions(id)
-      .then((data) => {
+  useEffect(() => {
+    if (leftTab !== 'history' || !id) return
+
+    let cancelled = false
+
+    const loadHistory = async () => {
+      setLoadingHistory(true)
+      try {
+        const data = await getSubmissions(id)
+        if (cancelled) return
         setHistory(
-          data.map((s: any) => ({
-            id: s.id || s._id,
+          data.map((s) => ({
+            id: s.id || s._id || '',
             verdict: s.verdict,
             language: s.language,
             runtime: s.runtime,
@@ -245,23 +264,23 @@ You can return the answer in any order.`,
             createdAt: s.createdAt,
           }))
         )
-      })
-      .catch(() => {})
-      .finally(() => setLoadingHistory(false))
-  }
-
-  useEffect(() => {
-    if (leftTab === 'history') {
-      loadHistory()
+      } catch {
+        // Ignore history load errors.
+      } finally {
+        if (!cancelled) setLoadingHistory(false)
+      }
     }
-  }, [leftTab])
+
+    void loadHistory()
+
+    return () => {
+      cancelled = true
+    }
+  }, [leftTab, id])
 
   // Rate limit cooldown interval (E4)
   useEffect(() => {
-    if (cooldownSeconds <= 0) {
-      setRateLimitMessage(null)
-      return
-    }
+    if (cooldownSeconds <= 0) return
     const timer = setInterval(() => {
       setCooldownSeconds((s) => s - 1)
     }, 1000)
@@ -302,8 +321,8 @@ You can return the answer in any order.`,
           })
         })
       }
-    } catch (err: any) {
-      if (err?.status === 429) {
+    } catch (err: unknown) {
+      if ((err as { status?: number } | null)?.status === 429) {
         // Edge Case E4: 429 Rate Limit
         setCooldownSeconds(10)
         setRateLimitMessage('Too many submissions! Please wait 10 seconds cooldown.')
@@ -311,7 +330,7 @@ You can return the answer in any order.`,
       } else {
         setExecutionState({
           status: 'INTERNAL_ERROR',
-          compileOutput: err?.message || 'Execution request failed',
+          compileOutput: err instanceof Error ? err.message : 'Execution request failed',
         })
       }
     }
@@ -424,6 +443,11 @@ You can return the answer in any order.`,
           <div className="flex flex-col gap-6">
             <div>
               <div className="flex items-center gap-3">
+                {problem.serialNo && (
+                  <span className="flex items-center justify-center h-7 px-2 rounded-md bg-cyan/15 border border-cyan/30 text-xs font-mono font-bold text-cyan shadow-sm">
+                    #{problem.serialNo}
+                  </span>
+                )}
                 <h1 className="text-2xl font-bold text-ink">{problem.title}</h1>
                 <Badge
                   tone={
@@ -687,7 +711,7 @@ You can return the answer in any order.`,
         </div>
 
         {/* E4 Rate limit warning message banner */}
-        {rateLimitMessage && (
+        {cooldownSeconds > 0 && rateLimitMessage && (
           <span className="text-[11px] font-mono text-warn">{rateLimitMessage}</span>
         )}
       </div>
@@ -898,15 +922,118 @@ You can return the answer in any order.`,
   )
 
   return (
-    <div className="fixed inset-x-0 bottom-0 top-16 overflow-hidden bg-base">
-      <ResizablePanels
-        direction="horizontal"
-        initialSplit={40}
-        minSplit={25}
-        maxSplit={60}
-        first={leftPanelContent}
-        second={rightPanelContent}
-      />
+    <div className="fixed inset-x-0 bottom-0 top-16 overflow-hidden bg-base flex flex-col">
+      {/* Mobile Tab Switcher (< lg) */}
+      <div className="flex lg:hidden items-center justify-between border-b border-white/10 bg-[#0E131F] px-3 py-2 shrink-0">
+        <div className="flex items-center gap-1.5" role="tablist">
+          <button
+            onClick={() => setMobileTab('problem')}
+            className={cn(
+              'px-3 py-1 rounded-ctl text-xs font-medium transition-colors',
+              mobileTab === 'problem'
+                ? 'bg-cyan/20 text-cyan font-semibold border border-cyan/40 shadow-glow-cyan'
+                : 'text-muted hover:text-ink'
+            )}
+          >
+            Problem
+          </button>
+          <button
+            onClick={() => setMobileTab('code')}
+            className={cn(
+              'px-3 py-1 rounded-ctl text-xs font-medium transition-colors',
+              mobileTab === 'code'
+                ? 'bg-cyan/20 text-cyan font-semibold border border-cyan/40 shadow-glow-cyan'
+                : 'text-muted hover:text-ink'
+            )}
+          >
+            Code
+          </button>
+          <button
+            onClick={() => setMobileTab('console')}
+            className={cn(
+              'px-3 py-1 rounded-ctl text-xs font-medium transition-colors',
+              mobileTab === 'console'
+                ? 'bg-cyan/20 text-cyan font-semibold border border-cyan/40 shadow-glow-cyan'
+                : 'text-muted hover:text-ink'
+            )}
+          >
+            Console
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => {
+              setMobileTab('console')
+              handleExecute('run')
+            }}
+            disabled={executionState.status === 'PENDING' || executionState.status === 'RUNNING'}
+            className="h-7 px-2.5 text-[11px] bg-white/10 text-cyan border border-cyan/30"
+          >
+            <Play className="size-3 mr-1 fill-cyan" />
+            Run
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => {
+              setMobileTab('console')
+              handleExecute('submit')
+            }}
+            disabled={executionState.status === 'PENDING' || executionState.status === 'RUNNING'}
+            className="h-7 px-2.5 text-[11px] bg-brand font-semibold"
+          >
+            <Send className="size-3 mr-1" />
+            Submit
+          </Button>
+        </div>
+      </div>
+
+      {/* Mobile Active Tab View (< lg) */}
+      <div className="flex-1 overflow-hidden lg:hidden">
+        {mobileTab === 'problem' && (
+          <div className="h-full overflow-y-auto">{leftPanelContent}</div>
+        )}
+        {mobileTab === 'code' && (
+          <div className="flex h-full flex-col overflow-hidden bg-[#161B22]">
+            {editorHeader}
+            <div className="flex-1 overflow-hidden">
+              <Editor
+                height="100%"
+                language={LANGUAGES.find((l) => l.id === language)?.monaco || 'python'}
+                value={code}
+                onChange={handleCodeChange}
+                beforeMount={handleEditorWillMount}
+                theme="mockkernel-dark"
+                options={{
+                  fontSize: 13,
+                  fontFamily: '"JetBrains Mono Variable", monospace',
+                  minimap: { enabled: false },
+                  scrollBeyondLastLine: false,
+                  automaticLayout: true,
+                  lineNumbers: 'on',
+                  padding: { top: 10, bottom: 10 },
+                }}
+              />
+            </div>
+          </div>
+        )}
+        {mobileTab === 'console' && (
+          <div className="h-full overflow-y-auto">{bottomConsoleContent}</div>
+        )}
+      </div>
+
+      {/* Desktop Resizable View (>= lg) */}
+      <div className="hidden lg:flex flex-1 overflow-hidden">
+        <ResizablePanels
+          direction="horizontal"
+          initialSplit={40}
+          minSplit={25}
+          maxSplit={60}
+          first={leftPanelContent}
+          second={rightPanelContent}
+        />
+      </div>
 
       {/* Unsaved Changes Warning Modal */}
       {showLeaveModal && (

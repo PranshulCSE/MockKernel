@@ -40,7 +40,7 @@ export function ResizablePanels({
       if (!isDragging.current || !containerRef.current) return
 
       const rect = containerRef.current.getBoundingClientRect()
-      let percentage = 50
+      let percentage: number
 
       if (direction === 'horizontal') {
         const offset = e.clientX - rect.left

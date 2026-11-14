@@ -70,7 +70,18 @@ export async function apiClient<T = unknown>(endpoint: string, options: RequestO
     init.body = body instanceof FormData ? body : JSON.stringify(body)
   }
 
-  const response = await fetch(url, init)
+  let response: Response
+  try {
+    response = await fetch(url, init)
+  } catch (networkErr: any) {
+    throw new ApiClientError(0, {
+      code: 'NETWORK_ERROR',
+      message: networkErr?.message?.includes('Failed to fetch')
+        ? 'Could not connect to MockKernel backend server (connection refused).'
+        : networkErr?.message || 'Network error occurred.',
+      details: { url },
+    })
+  }
 
   // Rate-limit headers inspection
   const retryAfterHeader = response.headers.get('Retry-After')

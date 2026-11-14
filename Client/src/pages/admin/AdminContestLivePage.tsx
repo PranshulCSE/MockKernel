@@ -73,7 +73,10 @@ export default function AdminContestLivePage() {
   }, [contestId, toast])
 
   useEffect(() => {
-    void loadData()
+    const run = async () => {
+      await loadData()
+    }
+    void run()
   }, [loadData])
 
   const handleConfirmDisqualify = async () => {
