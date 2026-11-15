@@ -44,10 +44,7 @@ export async function createAssessment(req: Request, res: Response): Promise<voi
 
   const title = readString(body.title, 'title', { min: 3, max: 150 });
   const description = typeof body.description === 'string' ? body.description.trim() : '';
-  const durationMinutes = readInteger(body.durationMinutes, 'durationMinutes', {
-    min: 5,
-    max: 1440,
-  });
+  const durationMinutes = readInteger(body.durationMinutes, 'durationMinutes', 5, 1440);
   const startTime = readDate(body.startTime, 'startTime');
   const endTime = readDate(body.endTime, 'endTime');
 
@@ -162,7 +159,8 @@ export async function getAdminAssessments(req: Request, res: Response): Promise<
 /** Candidate: Join / Validate code and view instructions */
 export async function joinAssessment(req: Request, res: Response): Promise<void> {
   const authUser = getAuthUser(req);
-  const rawCode = req.params.code?.trim().toUpperCase();
+  const rawParam = req.params.code;
+  const rawCode = (typeof rawParam === 'string' ? rawParam : Array.isArray(rawParam) ? rawParam[0] : '')?.trim().toUpperCase();
 
   if (!rawCode) {
     throw new HttpError(400, 'VALIDATION_ERROR', 'Access code is required.');
