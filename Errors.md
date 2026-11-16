@@ -25,3 +25,7 @@ While searching Problem in the Search Bar using Serial Number it is not showing 
 
 
 Add a LOG FIlE Separately 
+which will be in the .gitignore
+
+Make sure to Check each & evry part of UI will be responsive & looking up fine on the DESKTOP
+
