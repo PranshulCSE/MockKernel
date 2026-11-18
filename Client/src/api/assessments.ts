@@ -31,7 +31,7 @@ export interface AssessmentSummary {
     strikes: number
     startedAt: string
     submittedAt?: string
-    codeSubmissions?: Record<string, any>
+    codeSubmissions?: Record<string, unknown>
   } | null
 }
 
@@ -229,7 +229,7 @@ export const assessmentsApi = {
       sessionId?: string
       reason: string
       status?: string
-      codeSubmissions?: Record<string, any>
+      codeSubmissions?: Record<string, unknown>
     }
   ): boolean => {
     const url = `${BASE_URL}/api/assessments/${assessmentId}/auto-submit`

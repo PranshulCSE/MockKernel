@@ -11,6 +11,7 @@ import {
   LogOut,
   Copy,
   Check,
+  RefreshCw,
 } from 'lucide-react'
 import {
   Badge,
@@ -59,6 +60,8 @@ export default function ContestArenaPage() {
   // Contest State
   const [contest, setContest] = useState<ContestDetail | null>(null)
   const [loadingContest, setLoadingContest] = useState(true)
+  const [contestError, setContestError] = useState<string | null>(null)
+  const [contestReloadKey, setContestReloadKey] = useState(0)
   const [activeProblemIndex, setActiveProblemIndex] = useState(0)
 
   // Problem State
@@ -121,45 +124,18 @@ export default function ContestArenaPage() {
 
     const loadContest = async () => {
       setLoadingContest(true)
+      setContestError(null)
       try {
         const data = await getContestById(contestId)
         if (!cancelled) setContest(data)
-      } catch {
+      } catch (err: unknown) {
         if (cancelled) return
-        // Mock fallback if contest not yet in DB
-        const now = Date.now()
-        setContest({
-          id: contestId,
-          title: 'MockKernel Live Contest',
-          description: 'Official algorithmic round with strict rating updates.',
-          status: 'live',
-          startTime: new Date(now - 1000 * 60 * 15).toISOString(),
-          endTime: new Date(now + 1000 * 60 * 75).toISOString(),
-          problemCount: 4,
-          participantCount: 88,
-          problems: [
-            {
-              problem: { id: 'two-sum', title: 'Two Sum', difficulty: 'Easy' },
-              points: 100,
-              order: 0,
-            },
-            {
-              problem: { id: 'valid-parentheses', title: 'Valid Parentheses', difficulty: 'Easy' },
-              points: 200,
-              order: 1,
-            },
-            {
-              problem: { id: 'lru-cache', title: 'LRU Cache', difficulty: 'Medium' },
-              points: 300,
-              order: 2,
-            },
-            {
-              problem: { id: 'merge-k-lists', title: 'Merge k Sorted Lists', difficulty: 'Hard' },
-              points: 400,
-              order: 3,
-            },
-          ],
-        })
+        setContest(null)
+        setContestError(
+          err instanceof Error
+            ? err.message
+            : 'Could not load this contest. Please try again.'
+        )
       } finally {
         if (!cancelled) setLoadingContest(false)
       }
@@ -170,7 +146,7 @@ export default function ContestArenaPage() {
     return () => {
       cancelled = true
     }
-  }, [contestId])
+  }, [contestId, contestReloadKey])
 
   // Load active problem details
   const activeProblemRef: any = contest?.problems?.[activeProblemIndex]
@@ -205,8 +181,11 @@ export default function ContestArenaPage() {
         setCurrentProblem({
           id: activePid,
           title: activeTitle,
-          difficulty: activeDifficulty,
-          supportedLanguages: ['python', 'cpp', 'java', 'javascript'],
+          difficulty: (activeDifficulty as 'Easy' | 'Medium' | 'Hard') || 'Medium',
+          supportedLanguages:
+            activeProblemRef?.supportedLanguages?.length
+              ? activeProblemRef.supportedLanguages
+              : ['python', 'cpp', 'java', 'javascript'],
           statement: `Solve the problem "${activeTitle}" within the contest constraints.
 
 Input and Output formats follow standard competitive programming conventions.`,
@@ -232,7 +211,7 @@ Input and Output formats follow standard competitive programming conventions.`,
     return () => {
       cancelled = true
     }
-  }, [activePid, activeTitle, activeDifficulty])
+  }, [activePid, activeTitle, activeDifficulty, activeProblemRef?.supportedLanguages])
 
   // Draft loading per problem in contest
   useEffect(() => {
@@ -393,11 +372,37 @@ Input and Output formats follow standard competitive programming conventions.`,
     )
   }
 
+  if (contestError) {
+    return (
+      <GlassCard className="m-4 flex flex-col items-center gap-4 py-12 text-center sm:m-8 sm:py-16">
+        <AlertTriangle className="size-10 text-bad" />
+        <div>
+          <h2 className="text-xl font-bold">Could not load contest</h2>
+          <p className="mt-1 max-w-md text-sm text-muted">{contestError}</p>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Button
+            onClick={() => setContestReloadKey((key) => key + 1)}
+            leftIcon={<RefreshCw className="size-4" />}
+          >
+            Retry
+          </Button>
+          <Button variant="secondary" onClick={() => navigate('/contests')}>
+            Back to Contests
+          </Button>
+        </div>
+      </GlassCard>
+    )
+  }
+
   if (!contest) {
     return (
-      <GlassCard className="m-8 flex flex-col items-center gap-4 py-16 text-center">
+      <GlassCard className="m-4 flex flex-col items-center gap-4 py-12 text-center sm:m-8 sm:py-16">
         <AlertTriangle className="size-10 text-bad" />
         <h2 className="text-xl font-bold">Contest Not Found</h2>
+        <p className="max-w-md text-sm text-muted">
+          This contest may have been removed or is not available yet.
+        </p>
         <Button onClick={() => navigate('/contests')}>Back to Contests</Button>
       </GlassCard>
     )
@@ -406,6 +411,11 @@ Input and Output formats follow standard competitive programming conventions.`,
   // Left panel problem statement
   const leftPanelContent = (
     <div className="flex h-full flex-col overflow-hidden border-r border-white/10 bg-[#07070F]/80">
+      <div className="shrink-0 border-b border-white/5 px-4 py-2 lg:hidden">
+        <p className="truncate text-[11px] font-mono uppercase tracking-wider text-muted">
+          {contest.title}
+        </p>
+      </div>
       <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-2.5">
         <span className="text-xs font-mono text-cyan uppercase tracking-wider font-semibold">
           Problem {String.fromCharCode(65 + activeProblemIndex)}: {activeProblemRef?.points ?? 100} Points
@@ -695,32 +705,42 @@ Input and Output formats follow standard competitive programming conventions.`,
   )
 
   return (
-    <div className="fixed inset-0 top-0 flex flex-col bg-base z-30">
+    <div className="fixed inset-x-0 bottom-0 top-16 z-30 flex flex-col overflow-hidden bg-base">
       {/* Contest HUD Top Bar */}
-      <header className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 bg-base/90 backdrop-blur-xl px-6">
+      <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-base/90 px-3 backdrop-blur-xl sm:h-16 sm:px-6">
         {/* Left: Back / Title */}
-        <div className="flex items-center gap-4">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-4">
           <button
             onClick={() => setShowLeaveModal(true)}
-            className="flex items-center gap-1.5 text-xs text-muted hover:text-bad transition-colors"
+            className="flex shrink-0 items-center gap-1.5 text-xs text-muted transition-colors hover:text-bad"
             title="Leave contest"
           >
             <LogOut className="size-4" />
             <span className="hidden sm:inline">Leave Contest</span>
           </button>
-          <div className="h-4 w-px bg-white/10" />
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-ink truncate max-w-xs sm:max-w-md">
+          <div className="h-4 w-px shrink-0 bg-white/10" />
+          <div className="hidden min-w-0 items-center gap-2 md:flex">
+            <span
+              className="max-w-xs truncate text-sm font-bold text-ink lg:max-w-md"
+              title={contest.title}
+            >
               {contest.title}
             </span>
           </div>
         </div>
 
         {/* Center: Problem Navigation Tabs (Problem A, B, C) */}
+<<<<<<< HEAD
         <div className="flex items-center gap-1.5" role="tablist">
           {contest.problems?.map((pRef: any, idx) => {
             const letter = String.fromCharCode(65 + idx)
             const pid = pRef?.problem?.id || pRef?.problemId || pRef?.id || `problem-${idx}`
+=======
+        <div className="flex shrink-0 items-center gap-1 sm:gap-1.5" role="tablist">
+          {contest.problems?.map((pRef, idx) => {
+            const letter = String.fromCharCode(65 + idx)
+            const pid = pRef.problemId
+>>>>>>> 3ab395cc2558404ea9a5b35a5ec07c6244ab7ada
             const pStatus = solvedStatus[pid] || 'UNTOUCHED'
             const isSelected = activeProblemIndex === idx
 
@@ -729,12 +749,13 @@ Input and Output formats follow standard competitive programming conventions.`,
                 key={pid || idx}
                 role="tab"
                 aria-selected={isSelected}
+                aria-label={`Problem ${letter}`}
                 onClick={() => setActiveProblemIndex(idx)}
                 className={cn(
-                  'flex items-center gap-2 rounded-full px-3.5 py-1 text-xs font-mono transition-all',
+                  'flex items-center gap-1.5 rounded-full px-2 py-1 font-mono text-[11px] transition-all sm:gap-2 sm:px-3.5 sm:text-xs',
                   isSelected
-                    ? 'bg-cyan/20 text-cyan border border-cyan/40 shadow-glow-cyan'
-                    : 'bg-white/5 text-muted hover:bg-white/10 hover:text-ink border border-white/5'
+                    ? 'border border-cyan/40 bg-cyan/20 text-cyan shadow-glow-cyan'
+                    : 'border border-white/5 bg-white/5 text-muted hover:bg-white/10 hover:text-ink'
                 )}
               >
                 {/* Solved Status Dot */}
@@ -745,32 +766,41 @@ Input and Output formats follow standard competitive programming conventions.`,
                 ) : (
                   <span className="size-2 rounded-full bg-white/20" />
                 )}
-                <span>Problem {letter}</span>
+                <span className="sm:hidden">{letter}</span>
+                <span className="hidden sm:inline">Problem {letter}</span>
               </button>
             )
           })}
         </div>
 
         {/* Right: Big Countdown Timer & Leaderboard Button */}
-        <div className="flex items-center gap-4">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-4">
           <Timer targetTime={contest.endTime} size="md" />
 
-          <Link to={`/contests/${contestId}/leaderboard`} target="_blank">
-            <Button variant="secondary" size="sm" className="h-9 text-xs">
-              <Trophy className="size-3.5 mr-1 text-cyan" />
-              Leaderboard
+          <Link
+            to={`/contests/${contestId}/leaderboard`}
+            target="_blank"
+            aria-label="Open contest leaderboard"
+          >
+            <Button
+              variant="secondary"
+              size="sm"
+              className="h-8 px-2 text-xs sm:h-9 sm:px-3"
+            >
+              <Trophy className="size-3.5 text-cyan sm:mr-1" />
+              <span className="hidden sm:inline">Leaderboard</span>
             </Button>
           </Link>
         </div>
       </header>
 
       {/* Mobile Tab Switcher (< lg) */}
-      <div className="flex lg:hidden items-center justify-between border-b border-white/10 bg-[#0E131F] px-3 py-2 shrink-0">
-        <div className="flex items-center gap-1.5" role="tablist">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-[#0E131F] px-2 py-2 sm:px-3 lg:hidden">
+        <div className="flex min-w-0 items-center gap-1" role="tablist">
           <button
             onClick={() => setMobileTab('problem')}
             className={cn(
-              'px-3 py-1 rounded-ctl text-xs font-medium transition-colors',
+              'rounded-ctl px-2 py-1 text-[11px] font-medium transition-colors sm:px-3 sm:text-xs',
               mobileTab === 'problem'
                 ? 'bg-cyan/20 text-cyan font-semibold border border-cyan/40 shadow-glow-cyan'
                 : 'text-muted hover:text-ink'
@@ -781,7 +811,7 @@ Input and Output formats follow standard competitive programming conventions.`,
           <button
             onClick={() => setMobileTab('code')}
             className={cn(
-              'px-3 py-1 rounded-ctl text-xs font-medium transition-colors',
+              'rounded-ctl px-2 py-1 text-[11px] font-medium transition-colors sm:px-3 sm:text-xs',
               mobileTab === 'code'
                 ? 'bg-cyan/20 text-cyan font-semibold border border-cyan/40 shadow-glow-cyan'
                 : 'text-muted hover:text-ink'
@@ -792,7 +822,7 @@ Input and Output formats follow standard competitive programming conventions.`,
           <button
             onClick={() => setMobileTab('console')}
             className={cn(
-              'px-3 py-1 rounded-ctl text-xs font-medium transition-colors',
+              'rounded-ctl px-2 py-1 text-[11px] font-medium transition-colors sm:px-3 sm:text-xs',
               mobileTab === 'console'
                 ? 'bg-cyan/20 text-cyan font-semibold border border-cyan/40 shadow-glow-cyan'
                 : 'text-muted hover:text-ink'
@@ -802,7 +832,7 @@ Input and Output formats follow standard competitive programming conventions.`,
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <Button
             size="sm"
             onClick={() => {
@@ -810,10 +840,10 @@ Input and Output formats follow standard competitive programming conventions.`,
               handleExecute('run')
             }}
             disabled={executionState.status === 'PENDING' || executionState.status === 'RUNNING'}
-            className="h-7 px-2.5 text-[11px] bg-white/10 text-cyan border border-cyan/30"
+            className="h-7 border border-cyan/30 bg-white/10 px-2 text-[10px] text-cyan sm:px-2.5 sm:text-[11px]"
           >
-            <Play className="size-3 mr-1 fill-cyan" />
-            Run
+            <Play className="size-3 fill-cyan sm:mr-1" />
+            <span className="hidden sm:inline">Run</span>
           </Button>
           <Button
             size="sm"
@@ -822,10 +852,10 @@ Input and Output formats follow standard competitive programming conventions.`,
               handleExecute('submit')
             }}
             disabled={executionState.status === 'PENDING' || executionState.status === 'RUNNING'}
-            className="h-7 px-2.5 text-[11px] bg-brand font-semibold"
+            className="h-7 bg-brand px-2 text-[10px] font-semibold sm:px-2.5 sm:text-[11px]"
           >
-            <Send className="size-3 mr-1" />
-            Submit
+            <Send className="size-3 sm:mr-1" />
+            <span className="hidden sm:inline">Submit</span>
           </Button>
         </div>
       </div>

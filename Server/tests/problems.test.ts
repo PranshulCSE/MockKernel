@@ -2,6 +2,7 @@ import mongoose, { Types } from 'mongoose';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Contest } from '../src/models/Contest.js';
+import { Counter } from '../src/models/Counter.js';
 import { Problem } from '../src/models/Problem.js';
 import { TestCase } from '../src/models/TestCase.js';
 import { User } from '../src/models/User.js';
@@ -165,6 +166,9 @@ describe('Problems & TestCases CRUD, Validation, and Transactions', () => {
       .spyOn(TestCase, 'insertMany')
       .mockResolvedValue([] as never);
     vi.spyOn(TestCase, 'find').mockReturnValue(mockMongooseQuery([]) as never);
+    const serialSpy = vi
+      .spyOn(Counter, 'findOneAndUpdate')
+      .mockReturnValue(mockMongooseQuery({ _id: 'problemSerial', seq: 4 }) as never);
 
     const createRes = await request(app)
       .post('/api/admin/problems')
@@ -183,6 +187,7 @@ describe('Problems & TestCases CRUD, Validation, and Transactions', () => {
 
     expect(createRes.status).toBe(201);
     expect(fakeSession.withTransaction).toHaveBeenCalledTimes(1);
+    expect(serialSpy).toHaveBeenCalled();
     expect(saveSpy).toHaveBeenCalled();
     expect(insertManySpy).toHaveBeenCalledWith(
       [expect.objectContaining({ input: '', expectedOutput: '', order: 0 })],

@@ -6,6 +6,7 @@ import {
   listInterviewSessions,
   startInterviewSession,
   submitInterviewAnswer,
+  verifyInterviewTopicHandler,
 } from '../controllers/interviewController.js';
 import { authenticate } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rateLimiter.js';
@@ -14,6 +15,7 @@ import { asyncHandler } from '../utils/http.js';
 export const interviewRouter = Router();
 
 interviewRouter.use(authenticate);
+interviewRouter.post('/topics/verify', rateLimit('general'), asyncHandler(verifyInterviewTopicHandler));
 interviewRouter.post('/', rateLimit('ai'), asyncHandler(startInterviewSession));
 interviewRouter.get('/', rateLimit('general'), asyncHandler(listInterviewSessions));
 interviewRouter.get('/:id', rateLimit('general'), asyncHandler(getInterviewSession));
