@@ -3,11 +3,9 @@ import { Types, type QueryFilter } from 'mongoose';
 import { getAuthUser } from '../middleware/auth.js';
 import {
   INTERVIEW_STATUSES,
-  INTERVIEW_TOPICS,
   InterviewSession,
   type IInterviewSession,
   type InterviewStatus,
-  type InterviewTopic,
 } from '../models/InterviewSession.js';
 import { DIFFICULTIES, type Difficulty } from '../models/Problem.js';
 import {
@@ -15,6 +13,7 @@ import {
   generateNextQuestion,
 } from '../services/groqService.js';
 import { HttpError } from '../utils/http.js';
+import { verifyInterviewTopic } from '../utils/interviewTopics.js';
 import {
   getPagination,
   isRecord,
@@ -38,20 +37,50 @@ function parseTopics(value: unknown): string[] {
 
   const unique: string[] = [];
   for (const item of value) {
-    if (typeof item !== 'string' || item.trim().length < 2 || item.trim().length > 100) {
+    if (typeof item !== 'string') {
       throw new HttpError(
         400,
         'VALIDATION_ERROR',
-        'Each topic must be a non-empty string between 2 and 100 characters.'
+        'Each topic must be a string.'
       );
     }
-    const topic = item.trim();
-    if (!unique.includes(topic)) {
-      unique.push(topic);
+
+    const verification = verifyInterviewTopic(item);
+    if (!verification.valid) {
+      throw new HttpError(
+        400,
+        'VALIDATION_ERROR',
+        verification.message ?? `"${item}" is not a valid interview topic.`
+      );
+    }
+
+    const alreadyAdded = unique.some(
+      (topic) => topic.toLowerCase() === verification.normalized.toLowerCase()
+    );
+    if (!alreadyAdded) {
+      unique.push(verification.normalized);
     }
   }
 
   return unique;
+}
+
+/** POST /api/interviews/topics/verify */
+export async function verifyInterviewTopicHandler(
+  req: Request,
+  res: Response
+): Promise<void> {
+  const body = req.body as unknown;
+  if (!isRecord(body)) {
+    throw new HttpError(400, 'VALIDATION_ERROR', 'Request body must be a JSON object.');
+  }
+
+  const topic = readString(body.topic ?? body.subject, 'topic', {
+    min: 1,
+    max: 80,
+  });
+
+  res.status(200).json({ data: verifyInterviewTopic(topic) });
 }
 
 function parseDifficulty(value: unknown): Difficulty {

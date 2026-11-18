@@ -11,11 +11,13 @@ import { connectDB, disconnectDB } from './config/db.js';
 import { connectRedis, disconnectRedis } from './config/redis.js';
 import { createSocketServer } from './config/socket.js';
 import { closeSubmissionQueue } from './queues/submissionQueue.js';
+import { syncProblemSerialCounter } from './services/problemSerialService.js';
 import { startVerdictWatcher } from './services/verdictEmitter.js';
 
 async function bootstrap() {
   const env = validateEnv();
   await connectDB(env.mongoUri);
+  await syncProblemSerialCounter();
   await connectRedis();
 
   const app = createApp();

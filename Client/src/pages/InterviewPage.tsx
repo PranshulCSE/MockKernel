@@ -13,7 +13,8 @@ import {
 } from 'lucide-react'
 import { Button, Chip, GlassCard, useToast } from '../components/ui'
 import { VoiceOrb } from '../features/interview/VoiceOrb'
-import { startInterview } from '../api/interviews'
+import { startInterview, verifyInterviewTopic } from '../api/interviews'
+import { ApiClientError } from '../api/client'
 import { cn } from '../lib/cn'
 
 const defaultPresetTopics = [
@@ -98,7 +99,7 @@ function verifySubject(raw: string): { valid: boolean; normalized: string; messa
     RECOGNIZED_TECH_DOMAINS.some((d) => d === w || d.startsWith(w) || w.startsWith(d))
   )
 
-  if (isMatch || hasTechWord || words.length >= 2) {
+  if (isMatch || hasTechWord) {
     // Format to clean title case
     const normalized = trimmed
       .split(' ')
@@ -133,6 +134,7 @@ export default function InterviewPage() {
   const [difficulty, setDifficulty] = useState<(typeof difficultyLevels)[number]>('Medium')
   const [questionCount, setQuestionCount] = useState<(typeof questionCounts)[number]>(5)
   const [isStarting, setIsStarting] = useState(false)
+  const [isVerifying, setIsVerifying] = useState(false)
 
   const toggleTopic = (t: string) => {
     setTopics((prev) =>
@@ -140,23 +142,12 @@ export default function InterviewPage() {
     )
   }
 
-  // Handle Verify & Add custom subject
-  const handleVerifyAndAdd = (e?: React.FormEvent) => {
-    if (e) e.preventDefault()
+  const addVerifiedTopic = (newSubject: string) => {
+    const alreadyAdded = [...topics, ...customTopics].some(
+      (topic) => topic.toLowerCase() === newSubject.toLowerCase()
+    )
 
-    const result = verifySubject(customInput)
-    if (!result.valid) {
-      setVerificationFeedback({
-        status: 'error',
-        message: result.message || 'Verification failed. Please check the subject name.',
-      })
-      return
-    }
-
-    const newSubject = result.normalized
-
-    // Check if already in list
-    if (topics.includes(newSubject) || customTopics.includes(newSubject)) {
+    if (alreadyAdded) {
       setVerificationFeedback({
         status: 'error',
         message: `"${newSubject}" is already added to your topics list.`,
@@ -164,7 +155,6 @@ export default function InterviewPage() {
       return
     }
 
-    // Add to custom list and select it
     setCustomTopics((prev) => [...prev, newSubject])
     setTopics((prev) => [...prev, newSubject])
     setCustomInput('')
@@ -174,6 +164,65 @@ export default function InterviewPage() {
     })
 
     toast.success(`"${newSubject}" verified and added to interview topics!`, 'Subject Verified')
+  }
+
+  // Handle Verify & Add custom subject
+  const handleVerifyAndAdd = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+
+    const trimmed = customInput.trim()
+    if (!trimmed) {
+      setVerificationFeedback({
+        status: 'error',
+        message: 'Please enter a technical subject or framework name.',
+      })
+      return
+    }
+
+    // The backend is the source of truth for custom topics. The local validator
+    // is only used when the API is unreachable.
+    const localResult = verifySubject(trimmed)
+
+    setIsVerifying(true)
+    try {
+      const result = await verifyInterviewTopic(trimmed)
+      if (!result.valid) {
+        setVerificationFeedback({
+          status: 'error',
+          message: result.message || 'Verification failed. Please check the subject name.',
+        })
+        return
+      }
+
+      addVerifiedTopic(result.normalized)
+    } catch (err: unknown) {
+      if (err instanceof ApiClientError && err.code === 'NETWORK_ERROR') {
+        if (localResult.valid) {
+          // Keep the setup flow usable if the API is temporarily unreachable.
+          addVerifiedTopic(localResult.normalized)
+          toast.warn(
+            'Backend verification is offline, so the local validator was used. The server will verify again when the session starts.',
+            'Verification Fallback'
+          )
+        } else {
+          setVerificationFeedback({
+            status: 'error',
+            message:
+              localResult.message || 'Verification failed. Please check the subject name.',
+          })
+        }
+      } else {
+        setVerificationFeedback({
+          status: 'error',
+          message:
+            err instanceof Error
+              ? err.message
+              : 'Could not verify this subject. Please try again.',
+        })
+      }
+    } finally {
+      setIsVerifying(false)
+    }
   }
 
   const removeCustomTopic = (topicToRemove: string) => {
@@ -279,23 +328,25 @@ export default function InterviewPage() {
             <Button
               type="submit"
               variant="secondary"
+              loading={isVerifying}
+              disabled={isVerifying || !customInput.trim()}
               className="h-11 px-5 border-cyan/40 text-cyan hover:bg-cyan/15 shrink-0 text-xs font-semibold"
             >
               <Check className="size-4 mr-1.5 text-cyan" />
-              Verify & Add Subject
+              {isVerifying ? 'Verifying...' : 'Verify & Add Subject'}
             </Button>
           </form>
 
           {/* Verification Feedback Banner */}
           {verificationFeedback.status === 'success' && (
-            <div className="flex items-center gap-2 rounded-md bg-ok/10 border border-ok/30 px-3 py-2 text-xs text-ok font-medium animate-fadeIn">
+            <div aria-live="polite" className="flex items-center gap-2 rounded-md bg-ok/10 border border-ok/30 px-3 py-2 text-xs text-ok font-medium animate-fadeIn">
               <CheckCircle2 className="size-4 shrink-0 text-ok" />
               <span>{verificationFeedback.message}</span>
             </div>
           )}
 
           {verificationFeedback.status === 'error' && (
-            <div className="flex items-center gap-2 rounded-md bg-bad/10 border border-bad/30 px-3 py-2 text-xs text-bad font-medium animate-fadeIn">
+            <div aria-live="polite" className="flex items-center gap-2 rounded-md bg-bad/10 border border-bad/30 px-3 py-2 text-xs text-bad font-medium animate-fadeIn">
               <AlertCircle className="size-4 shrink-0 text-bad" />
               <span>{verificationFeedback.message}</span>
             </div>

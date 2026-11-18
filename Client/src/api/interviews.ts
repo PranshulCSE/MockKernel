@@ -1,4 +1,43 @@
-import { client } from './client'
+import { client, ApiClientError } from './client'
+
+function isNetworkError(err: unknown): boolean {
+  return err instanceof ApiClientError && err.code === 'NETWORK_ERROR'
+}
+
+interface MockInterviewSessionState {
+  questionNumber?: number
+  questionCount?: number
+  topics?: string[]
+  status?: string
+  difficulty?: string
+  startedAt?: string
+  question?: { question?: string; topic?: string }
+}
+
+function asInterviewDifficulty(
+  value: string | undefined
+): 'Easy' | 'Medium' | 'Hard' {
+  return value === 'Easy' || value === 'Hard' ? value : 'Medium'
+}
+
+function asInterviewStatus(
+  value: string | undefined
+): 'in_progress' | 'completed' | 'abandoned' {
+  return value === 'completed' || value === 'abandoned' ? value : 'in_progress'
+}
+
+function readMockSession(sessionId: string): MockInterviewSessionState | null {
+  try {
+    const raw = localStorage.getItem(`mk_session_${sessionId}`)
+    if (!raw) return null
+    const parsed: unknown = JSON.parse(raw)
+    return typeof parsed === 'object' && parsed !== null
+      ? (parsed as MockInterviewSessionState)
+      : null
+  } catch {
+    return null
+  }
+}
 
 export interface InterviewQuestion {
   question: string
@@ -69,6 +108,12 @@ export interface ListInterviewsResponse {
     total: number
     totalPages: number
   }
+}
+
+export interface TopicVerificationResult {
+  valid: boolean
+  normalized: string
+  message?: string
 }
 
 // Generate topic-specific starter questions for custom topics
@@ -170,6 +215,14 @@ function generateNextFollowUp(topics: string[], qNum: number): { question: strin
   }
 }
 
+export async function verifyInterviewTopic(topic: string): Promise<TopicVerificationResult> {
+  const res = await client.post<{ data: TopicVerificationResult }>(
+    '/api/interviews/topics/verify',
+    { topic }
+  )
+  return res.data
+}
+
 export async function startInterview(payload: {
   topics: string[]
   difficulty: string
@@ -178,8 +231,14 @@ export async function startInterview(payload: {
   try {
     const res = await client.post<{ data: StartInterviewResponse }>('/api/interviews', payload)
     return res.data
-  } catch (err: any) {
-    // Graceful offline mock session fallback
+  } catch (err: unknown) {
+    if (!isNetworkError(err)) {
+      throw err
+    }
+
+    // Offline preview fallback only when the backend is unreachable. API
+    // validation and AI errors must surface to the user instead of silently
+    // starting a mock session.
     const id = `mock-session-${Date.now()}`
     const q1 = generateFirstQuestion(payload.topics, payload.difficulty)
     const session: StartInterviewResponse = {
@@ -195,7 +254,10 @@ export async function startInterview(payload: {
     }
     try {
       localStorage.setItem(`mk_session_${id}`, JSON.stringify(session))
-    } catch {}
+    } catch {
+      // Storage can be unavailable in private browsing; the in-memory session
+      // still works for the current page.
+    }
     return session
   }
 }
@@ -205,10 +267,7 @@ export async function submitInterviewAnswer(
   answer: string,
 ): Promise<SubmitAnswerResponse> {
   if (sessionId.startsWith('mock-session-')) {
-    let saved: any = null
-    try {
-      saved = JSON.parse(localStorage.getItem(`mk_session_${sessionId}`) || 'null')
-    } catch {}
+    const saved = readMockSession(sessionId)
 
     const qNum = (saved?.questionNumber || 1) + 1
     const totalQ = saved?.questionCount || 5
@@ -249,7 +308,9 @@ export async function submitInterviewAnswer(
       saved.status = isComplete ? 'completed' : 'in_progress'
       try {
         localStorage.setItem(`mk_session_${sessionId}`, JSON.stringify(saved))
-      } catch {}
+      } catch {
+        // Ignore storage failures; the response still advances the mock session.
+      }
     }
 
     return response
@@ -261,8 +322,8 @@ export async function submitInterviewAnswer(
       { answer },
     )
     return res.data
-  } catch (err: any) {
-    if (err?.message?.includes('Failed to fetch') || err?.name === 'TypeError') {
+  } catch (err: unknown) {
+    if (isNetworkError(err)) {
       // Offline fallback
       return submitInterviewAnswer(`mock-session-${sessionId}`, answer)
     }
@@ -292,8 +353,8 @@ export async function completeInterview(sessionId: string): Promise<InterviewSes
       `/api/interviews/${sessionId}/complete`,
     )
     return res.data
-  } catch (err: any) {
-    if (err?.message?.includes('Failed to fetch') || err?.name === 'TypeError') {
+  } catch (err: unknown) {
+    if (isNetworkError(err)) {
       return completeInterview(`mock-session-${sessionId}`)
     }
     throw err
@@ -312,10 +373,7 @@ export async function abandonInterview(sessionId: string): Promise<{ id: string;
 
 export async function getInterview(sessionId: string): Promise<InterviewSession> {
   if (sessionId.startsWith('mock-session-')) {
-    let saved: any = null
-    try {
-      saved = JSON.parse(localStorage.getItem(`mk_session_${sessionId}`) || 'null')
-    } catch {}
+    const saved = readMockSession(sessionId)
 
     const topics = saved?.topics || ['MERN Stack', 'Python']
     const q1 = generateFirstQuestion(topics, saved?.difficulty || 'Medium')
@@ -323,10 +381,10 @@ export async function getInterview(sessionId: string): Promise<InterviewSession>
     return {
       id: sessionId,
       sessionId,
-      difficulty: saved?.difficulty || 'Medium',
+      difficulty: asInterviewDifficulty(saved?.difficulty),
       topics,
       questionCount: saved?.questionCount || 5,
-      status: saved?.status || 'in_progress',
+      status: asInterviewStatus(saved?.status),
       questions: [
         {
           question: saved?.question?.question || q1.question,
@@ -352,7 +410,10 @@ export async function listInterviews(params?: {
 }): Promise<ListInterviewsResponse> {
   try {
     return await client.get<ListInterviewsResponse>('/api/interviews', { params })
-  } catch {
+  } catch (err) {
+    if (!isNetworkError(err)) {
+      throw err
+    }
     return {
       data: [
         {

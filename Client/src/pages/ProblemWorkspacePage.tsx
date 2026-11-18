@@ -13,6 +13,7 @@ import {
   FileCode,
   History,
   AlertCircle,
+  RefreshCw,
 } from 'lucide-react'
 import {
   Badge,
@@ -84,6 +85,8 @@ export default function ProblemWorkspacePage() {
   // Problem State
   const [problem, setProblem] = useState<ProblemDetail | null>(null)
   const [loadingProblem, setLoadingProblem] = useState(true)
+  const [problemError, setProblemError] = useState<string | null>(null)
+  const [problemReloadKey, setProblemReloadKey] = useState(0)
   const [leftTab, setLeftTab] = useState<'statement' | 'history'>('statement')
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
 
@@ -131,45 +134,18 @@ export default function ProblemWorkspacePage() {
 
     const loadProblem = async () => {
       setLoadingProblem(true)
+      setProblemError(null)
       try {
         const data = await getProblemById(id)
         if (!cancelled) setProblem(data)
-      } catch {
+      } catch (err: unknown) {
         if (cancelled) return
-        // Fallback mock problem for local development
-        setProblem({
-          id,
-          title: 'Two Sum',
-          difficulty: 'Easy',
-          supportedLanguages: ['python', 'cpp', 'java', 'javascript'],
-          statement: `Given an array of integers \`nums\` and an integer \`target\`, return indices of the two numbers such that they add up to \`target\`.
-
-You may assume that each input would have **exactly one solution**, and you may not use the same element twice.
-
-You can return the answer in any order.`,
-          constraints: `• 2 <= nums.length <= 10^4
-• -10^9 <= nums[i] <= 10^9
-• -10^9 <= target <= 10^9
-• Only one valid answer exists.`,
-          sampleTestCases: [
-            {
-              id: 'sample-1',
-              input: 'nums = [2,7,11,15], target = 9',
-              expectedOutput: '[0,1]',
-              isSample: true,
-              order: 1,
-              explanation: 'Because nums[0] + nums[1] == 9, we return [0, 1].',
-            },
-            {
-              id: 'sample-2',
-              input: 'nums = [3,2,4], target = 6',
-              expectedOutput: '[1,2]',
-              isSample: true,
-              order: 2,
-            },
-          ],
-          createdAt: new Date().toISOString(),
-        })
+        setProblem(null)
+        setProblemError(
+          err instanceof Error
+            ? err.message
+            : 'Could not load this problem. Please try again.'
+        )
       } finally {
         if (!cancelled) setLoadingProblem(false)
       }
@@ -180,7 +156,7 @@ You can return the answer in any order.`,
     return () => {
       cancelled = true
     }
-  }, [id])
+  }, [id, problemReloadKey])
 
   // 2. Draft Persistence & Starter Code Loading
   useEffect(() => {
@@ -386,11 +362,37 @@ You can return the answer in any order.`,
     )
   }
 
+  if (problemError) {
+    return (
+      <GlassCard className="m-4 flex flex-col items-center gap-4 py-12 text-center sm:m-8 sm:py-16">
+        <AlertCircle className="size-10 text-bad" />
+        <div>
+          <h2 className="text-xl font-bold">Could not load problem</h2>
+          <p className="mt-1 max-w-md text-sm text-muted">{problemError}</p>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Button
+            onClick={() => setProblemReloadKey((key) => key + 1)}
+            leftIcon={<RefreshCw className="size-4" />}
+          >
+            Retry
+          </Button>
+          <Button variant="secondary" onClick={() => navigate('/practice')}>
+            Back to Practice
+          </Button>
+        </div>
+      </GlassCard>
+    )
+  }
+
   if (!problem) {
     return (
-      <GlassCard className="m-8 flex flex-col items-center gap-4 py-16 text-center">
+      <GlassCard className="m-4 flex flex-col items-center gap-4 py-12 text-center sm:m-8 sm:py-16">
         <AlertCircle className="size-10 text-bad" />
         <h2 className="text-xl font-bold">Problem Not Found</h2>
+        <p className="max-w-md text-sm text-muted">
+          This problem may have been removed or is not published yet.
+        </p>
         <Button onClick={() => navigate('/practice')}>Back to Practice</Button>
       </GlassCard>
     )
@@ -924,12 +926,12 @@ You can return the answer in any order.`,
   return (
     <div className="fixed inset-x-0 bottom-0 top-16 overflow-hidden bg-base flex flex-col">
       {/* Mobile Tab Switcher (< lg) */}
-      <div className="flex lg:hidden items-center justify-between border-b border-white/10 bg-[#0E131F] px-3 py-2 shrink-0">
-        <div className="flex items-center gap-1.5" role="tablist">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-[#0E131F] px-2 py-2 sm:px-3 lg:hidden">
+        <div className="flex min-w-0 items-center gap-1" role="tablist">
           <button
             onClick={() => setMobileTab('problem')}
             className={cn(
-              'px-3 py-1 rounded-ctl text-xs font-medium transition-colors',
+              'rounded-ctl px-2 py-1 text-[11px] font-medium transition-colors sm:px-3 sm:text-xs',
               mobileTab === 'problem'
                 ? 'bg-cyan/20 text-cyan font-semibold border border-cyan/40 shadow-glow-cyan'
                 : 'text-muted hover:text-ink'
@@ -940,7 +942,7 @@ You can return the answer in any order.`,
           <button
             onClick={() => setMobileTab('code')}
             className={cn(
-              'px-3 py-1 rounded-ctl text-xs font-medium transition-colors',
+              'rounded-ctl px-2 py-1 text-[11px] font-medium transition-colors sm:px-3 sm:text-xs',
               mobileTab === 'code'
                 ? 'bg-cyan/20 text-cyan font-semibold border border-cyan/40 shadow-glow-cyan'
                 : 'text-muted hover:text-ink'
@@ -951,7 +953,7 @@ You can return the answer in any order.`,
           <button
             onClick={() => setMobileTab('console')}
             className={cn(
-              'px-3 py-1 rounded-ctl text-xs font-medium transition-colors',
+              'rounded-ctl px-2 py-1 text-[11px] font-medium transition-colors sm:px-3 sm:text-xs',
               mobileTab === 'console'
                 ? 'bg-cyan/20 text-cyan font-semibold border border-cyan/40 shadow-glow-cyan'
                 : 'text-muted hover:text-ink'
@@ -961,7 +963,7 @@ You can return the answer in any order.`,
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <Button
             size="sm"
             onClick={() => {
@@ -969,10 +971,10 @@ You can return the answer in any order.`,
               handleExecute('run')
             }}
             disabled={executionState.status === 'PENDING' || executionState.status === 'RUNNING'}
-            className="h-7 px-2.5 text-[11px] bg-white/10 text-cyan border border-cyan/30"
+            className="h-7 border border-cyan/30 bg-white/10 px-2 text-[10px] text-cyan sm:px-2.5 sm:text-[11px]"
           >
-            <Play className="size-3 mr-1 fill-cyan" />
-            Run
+            <Play className="size-3 fill-cyan sm:mr-1" />
+            <span className="hidden sm:inline">Run</span>
           </Button>
           <Button
             size="sm"
@@ -981,10 +983,10 @@ You can return the answer in any order.`,
               handleExecute('submit')
             }}
             disabled={executionState.status === 'PENDING' || executionState.status === 'RUNNING'}
-            className="h-7 px-2.5 text-[11px] bg-brand font-semibold"
+            className="h-7 bg-brand px-2 text-[10px] font-semibold sm:px-2.5 sm:text-[11px]"
           >
-            <Send className="size-3 mr-1" />
-            Submit
+            <Send className="size-3 sm:mr-1" />
+            <span className="hidden sm:inline">Submit</span>
           </Button>
         </div>
       </div>

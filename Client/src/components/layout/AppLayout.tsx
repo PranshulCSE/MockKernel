@@ -13,9 +13,9 @@ export function AppLayout() {
 
   if (isWorkspace) {
     return (
-      <div className="flex flex-col min-h-screen bg-base">
+      <div className="flex min-h-screen flex-col overflow-x-clip bg-base">
         <Navbar />
-        <main className="flex-1 relative overflow-hidden">
+        <main id="main-content" className="relative flex-1 overflow-hidden">
           <Outlet />
         </main>
       </div>
@@ -23,10 +23,13 @@ export function AppLayout() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-base">
+    <div className="flex min-h-screen flex-col overflow-x-clip bg-base">
       <Background />
       <Navbar />
-      <main className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 pb-20 pt-6 sm:pt-10 flex-1">
+      <main
+        id="main-content"
+        className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-3 pb-16 pt-5 sm:px-6 sm:pb-20 sm:pt-8 lg:px-8 lg:pt-10"
+      >
         <Outlet />
       </main>
       <Footer />
