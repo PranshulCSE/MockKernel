@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router'
 import {
   ShieldAlert,
@@ -13,7 +13,11 @@ import {
   RefreshCw,
   ShieldCheck,
 } from 'lucide-react'
-import { assessmentsApi, type AssessmentReportData } from '../../api/assessments'
+import {
+  assessmentsApi,
+  getApiErrorMessage,
+  type AssessmentReportData,
+} from '../../api/assessments'
 import { Button, GlassCard, Badge } from '../../components/ui'
 
 export default function AdminAssessmentReportPage() {
@@ -27,25 +31,26 @@ export default function AdminAssessmentReportPage() {
   // Expandable candidate violation breakdown rows
   const [expandedCandidates, setExpandedCandidates] = useState<Record<string, boolean>>({})
 
-  const fetchReport = async () => {
+  const fetchReport = useCallback(async () => {
     if (!id) return
     try {
       setLoading(true)
       setErrorMessage('')
       const data = await assessmentsApi.getReport(id)
       setReportData(data)
-    } catch (err: any) {
-      setErrorMessage(
-        err?.response?.data?.error?.message || err?.message || 'Failed to load report.'
-      )
+    } catch (err) {
+      setErrorMessage(getApiErrorMessage(err, 'Failed to load report.'))
     } finally {
       setLoading(false)
     }
-  }
+  }, [id])
 
   useEffect(() => {
-    void fetchReport()
-  }, [id])
+    const timer = window.setTimeout(() => {
+      void fetchReport()
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [fetchReport])
 
   const toggleExpand = (candidateId: string) => {
     setExpandedCandidates((prev) => ({
@@ -59,8 +64,8 @@ export default function AdminAssessmentReportPage() {
     try {
       setDownloadingCsv(true)
       await assessmentsApi.downloadCsvReport(id, reportData.assessment.code)
-    } catch (err: any) {
-      alert(err?.message || 'Download failed.')
+    } catch (err) {
+      alert(getApiErrorMessage(err, 'Download failed.'))
     } finally {
       setDownloadingCsv(false)
     }

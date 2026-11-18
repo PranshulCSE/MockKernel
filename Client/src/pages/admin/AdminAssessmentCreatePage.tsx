@@ -13,7 +13,7 @@ import {
   AlertCircle,
   RefreshCw,
 } from 'lucide-react'
-import { assessmentsApi } from '../../api/assessments'
+import { assessmentsApi, getApiErrorMessage } from '../../api/assessments'
 import { getProblems, type ProblemSummary } from '../../api/problems'
 import { Button, GlassCard, Badge } from '../../components/ui'
 
@@ -23,6 +23,9 @@ interface CustomProblemForm {
   difficulty: 'Easy' | 'Medium' | 'Hard'
   constraints: string
 }
+
+const DEFAULT_START_ISO = new Date().toISOString().slice(0, 16)
+const DEFAULT_END_ISO = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
 
 export default function AdminAssessmentCreatePage() {
   const navigate = useNavigate()
@@ -34,11 +37,8 @@ export default function AdminAssessmentCreatePage() {
   const [durationMinutes, setDurationMinutes] = useState<number>(60)
 
   // Default times: start now, end in 7 days
-  const nowIso = new Date().toISOString().slice(0, 16)
-  const defaultEndIso = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
-
-  const [startTime, setStartTime] = useState<string>(nowIso)
-  const [endTime, setEndTime] = useState<string>(defaultEndIso)
+  const [startTime, setStartTime] = useState<string>(DEFAULT_START_ISO)
+  const [endTime, setEndTime] = useState<string>(DEFAULT_END_ISO)
 
   // Problem Selection
   const [availableProblems, setAvailableProblems] = useState<ProblemSummary[]>([])
@@ -154,12 +154,8 @@ export default function AdminAssessmentCreatePage() {
       })
 
       navigate('/admin/assessments')
-    } catch (err: any) {
-      const msg =
-        err?.response?.data?.error?.message ||
-        err?.message ||
-        'Failed to create assessment. Please try again.'
-      setErrorMessage(msg)
+    } catch (err) {
+      setErrorMessage(getApiErrorMessage(err, 'Failed to create assessment. Please try again.'))
     } finally {
       setIsSubmitting(false)
     }

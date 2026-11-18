@@ -118,6 +118,28 @@ export interface AssessmentReportData {
   sessions: CandidateReportItem[]
 }
 
+export interface AssessmentCodeSubmission {
+  code: string
+  language: string
+  testCasesPassed?: number
+  totalTestCases?: number
+}
+
+/** Extracts a backend error message without relying on `any`. */
+export function getApiErrorMessage(err: unknown, fallback: string): string {
+  if (err && typeof err === 'object') {
+    const candidate = err as {
+      response?: { data?: { error?: { message?: string } } }
+      message?: string
+    }
+    const message = candidate.response?.data?.error?.message ?? candidate.message
+    if (typeof message === 'string' && message.length > 0) {
+      return message
+    }
+  }
+  return fallback
+}
+
 export interface CreateAssessmentPayload {
   title: string
   description?: string
@@ -187,7 +209,7 @@ export const assessmentsApi = {
   // Candidate: Manual submission
   submit: async (
     assessmentId: string,
-    codeSubmissions: Record<string, { code: string; language: string; testCasesPassed?: number; totalTestCases?: number }>
+    codeSubmissions: Record<string, AssessmentCodeSubmission>
   ): Promise<{
     id: string
     status: string

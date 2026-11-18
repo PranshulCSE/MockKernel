@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router'
 import {
   ShieldAlert,
@@ -18,7 +18,7 @@ export default function AdminAssessmentsPage() {
   const [loading, setLoading] = useState<boolean>(true)
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
 
-  const fetchAssessments = async () => {
+  const fetchAssessments = useCallback(async () => {
     try {
       setLoading(true)
       const data = await assessmentsApi.listAdmin()
@@ -28,11 +28,14 @@ export default function AdminAssessmentsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
-    void fetchAssessments()
-  }, [])
+    const timer = window.setTimeout(() => {
+      void fetchAssessments()
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [fetchAssessments])
 
   const copyCode = (code: string) => {
     navigator.clipboard.writeText(code)
