@@ -1,6 +1,6 @@
 import Groq from 'groq-sdk';
 import { getEnvConfig } from '../config/env.js';
-import { INTERVIEW_TOPICS, type InterviewTopic } from '../models/InterviewSession.js';
+import type { InterviewTopic } from '../models/InterviewSession.js';
 import { DIFFICULTIES, type Difficulty } from '../models/Problem.js';
 import { HttpError } from '../utils/http.js';
 import { isRecord } from '../utils/request.js';
@@ -63,13 +63,6 @@ function getGroqClient(deps?: GroqServiceDeps): GroqClientLike {
     );
   }
   return new Groq({ apiKey: groqApiKey }) as unknown as GroqClientLike;
-}
-
-function isInterviewTopic(value: unknown): value is InterviewTopic {
-  return (
-    typeof value === 'string' &&
-    (INTERVIEW_TOPICS as readonly string[]).includes(value)
-  );
 }
 
 function isDifficulty(value: unknown): value is Difficulty {
@@ -137,11 +130,25 @@ export function validateNextTurnPayload(
       throw new Error('nextQuestion.question must be a non-empty string');
     }
 
-    const topic =
-      isInterviewTopic(raw.nextQuestion.topic) &&
-      options.allowedTopics.includes(raw.nextQuestion.topic)
-        ? raw.nextQuestion.topic
-        : (options.allowedTopics[0] ?? 'Data Structures');
+    const rawTopic =
+      typeof raw.nextQuestion.topic === 'string'
+        ? raw.nextQuestion.topic.trim()
+        : '';
+
+    const matchedTopic =
+      options.allowedTopics.find(
+        (allowed) => allowed.toLowerCase() === rawTopic.toLowerCase()
+      ) ??
+      options.allowedTopics.find(
+        (allowed) =>
+          rawTopic.length > 0 &&
+          (rawTopic.toLowerCase().includes(allowed.toLowerCase()) ||
+            allowed.toLowerCase().includes(rawTopic.toLowerCase()))
+      );
+
+    const topic: InterviewTopic =
+      matchedTopic ??
+      (rawTopic.length > 0 ? rawTopic : (options.allowedTopics[0] ?? 'Data Structures'));
 
     const difficulty = isDifficulty(raw.nextQuestion.difficulty)
       ? raw.nextQuestion.difficulty
