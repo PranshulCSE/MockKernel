@@ -1,23 +1,31 @@
-<!-- 14/November/2026 -->
+UI issues in Dashboard
+NAvbar issues
+Password Update in Dashbaord
+Adding Profile update in Dashboard
+Add Verify Email Option by Sending OTP to Mail using Node Mailer
+Mode Switching Option i.e in Dark & Light Mode 
+Default mode willbe Light
+On the Landing page there is issue that all the features are visible in the form of tab but I want this thing to be visible in the form of Cards
+And make Landing Page More Attractive it is looking uP very Much SIMPLe
 
-main issue is that this website is not mobile friendly , make it responsive 
-Time: 9:40 am 
-Failed to load resource: net::ERR_CONNECTION_REFUSED
-:3000/api/contests?:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
-:3000/api/contests/mock-weekly-1/join:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+Join Assessment Page is very much Simple make it more attractive as well as for MOCk Interview page
+
+Dashboard not be visible by switching to dahsboard tab on the top navbar, it will be visible by tapping on profile option on the top right right corner only
 
 
-On Leaderboard Page the Time Displayed is wrong 
-Also the No. of problems Solved is also Wrong 
+On th admin Profile Navbar is not Properly Settled Up
+
+On the SuperAdmin while creating New Admin there is an issue while typing new email in the form , or typing password in the password field it is redirecting me to the name filed in the form
+
+Also allow admin to Edit the Assessment or to delete the assessment after completion
+
+While Joining any Contest it is redirecting me to a Blank Screen and dont showing me anything 
+
+While searching Problem in the Search Bar using Serial Number it is not showing me the Problem
 
 
+Add a LOG FIlE Separately 
+which will be in the .gitignore
 
-And on the Mock Interview Page the issue is Topics are Fixed So if any one wanna apply for MERN Stack , Python or any other topic then it will be issue created so give a input box there & also verify the subject entered by  user.
-
-Header Footer is so much bad fix that also 
-
-Also do one thing that assign a serial number to all problems 
-and the user will be able to search a problem from serahc bar using that serial number too.
-
-And on the Contest Page the buttons All Contests, Live Contests,Ended are onactive they are still showing the same Contests when we are clicking on the button
+Make sure to Check each & evry part of UI will be responsive & looking up fine on the DESKTOP
 

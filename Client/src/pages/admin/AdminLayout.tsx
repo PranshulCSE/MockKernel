@@ -1,5 +1,5 @@
 import { NavLink, Outlet, Link } from 'react-router'
-import { LayoutDashboard, Code, Trophy, Users, Shield, ArrowLeft } from 'lucide-react'
+import { LayoutDashboard, Code, Trophy, Users, Shield, ArrowLeft, ShieldAlert } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { cn } from '../../lib/cn'
 import { Badge } from '../../components/ui'
@@ -12,6 +12,7 @@ export default function AdminLayout() {
     { to: '/admin', label: 'Overview', icon: LayoutDashboard, end: true },
     { to: '/admin/problems', label: 'Problems', icon: Code, end: false },
     { to: '/admin/contests', label: 'Contests', icon: Trophy, end: false },
+    { to: '/admin/assessments', label: 'Assessments', icon: ShieldAlert, end: false },
     ...(isSuperAdmin
       ? [{ to: '/admin/users', label: 'Users', icon: Users, end: false }]
       : []),

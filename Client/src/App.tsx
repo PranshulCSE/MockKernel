@@ -16,11 +16,16 @@ import NotFoundPage from './pages/NotFoundPage'
 import PracticePage from './pages/PracticePage'
 import ProblemWorkspacePage from './pages/ProblemWorkspacePage'
 import SignupPage from './pages/SignupPage'
+import JoinAssessmentPage from './pages/JoinAssessmentPage'
+import AssessmentArenaPage from './pages/AssessmentArenaPage'
 import AdminLayout from './pages/admin/AdminLayout'
 import AdminOverviewPage from './pages/admin/AdminOverviewPage'
 import AdminProblemsPage from './pages/admin/AdminProblemsPage'
 import AdminContestsPage from './pages/admin/AdminContestsPage'
 import AdminContestLivePage from './pages/admin/AdminContestLivePage'
+import AdminAssessmentsPage from './pages/admin/AdminAssessmentsPage'
+import AdminAssessmentCreatePage from './pages/admin/AdminAssessmentCreatePage'
+import AdminAssessmentReportPage from './pages/admin/AdminAssessmentReportPage'
 import AdminUsersPage from './pages/admin/AdminUsersPage'
 
 export default function App() {
@@ -46,6 +51,8 @@ export default function App() {
               <Route path="/interview/:id" element={<InterviewRoomPage />} />
               <Route path="/interview/:id/summary" element={<InterviewSummaryPage />} />
               <Route path="/interviews" element={<InterviewHistoryPage />} />
+              <Route path="/assessments/join" element={<JoinAssessmentPage />} />
+              <Route path="/assessments/:id/arena" element={<AssessmentArenaPage />} />
 
               {/* Admin & SuperAdmin Suite */}
               <Route element={<RequireRole roles={['admin', 'superadmin']} />}>
@@ -54,6 +61,9 @@ export default function App() {
                   <Route path="problems" element={<AdminProblemsPage />} />
                   <Route path="contests" element={<AdminContestsPage />} />
                   <Route path="contests/:id/live" element={<AdminContestLivePage />} />
+                  <Route path="assessments" element={<AdminAssessmentsPage />} />
+                  <Route path="assessments/new" element={<AdminAssessmentCreatePage />} />
+                  <Route path="assessments/:id/report" element={<AdminAssessmentReportPage />} />
                   <Route path="users" element={<AdminUsersPage />} />
                 </Route>
               </Route>

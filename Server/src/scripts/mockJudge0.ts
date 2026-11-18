@@ -130,7 +130,7 @@ async function executeLocally(
       return evaluate(token, run, expectedOutput);
     } else if (languageId === 62) {
       const match = sourceCode.match(/public\s+class\s+([A-Za-z0-9_]+)/);
-      const cls = match?.[1] ?? 'Solution';
+      const cls = match?.[1] || 'Solution';
       writeFileSync(join(tempDir, `${cls}.java`), sourceCode, 'utf8');
       const comp = await runProc('javac', [`${cls}.java`], tempDir, '', 10000);
       if (comp.exitCode !== 0) {
@@ -241,7 +241,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && url.pathname.startsWith('/submissions/')) {
-    const token = url.pathname.split('/')[2] ?? '';
+    const token = url.pathname.split('/')[2] || '';
     const item = memoryStore.get(token);
     if (!item) {
       res.writeHead(404, { 'Content-Type': 'application/json' });

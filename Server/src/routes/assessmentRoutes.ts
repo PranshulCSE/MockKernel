@@ -21,6 +21,21 @@ import { asyncHandler } from '../utils/http.js';
 
 export const publicAssessmentRouter = Router();
 
+// Allow admin creation and export on /api/assessments as well
+publicAssessmentRouter.post(
+  '/',
+  authenticate,
+  requireRole('admin', 'superadmin'),
+  asyncHandler(createAssessment)
+);
+
+publicAssessmentRouter.get(
+  '/:id/export',
+  authenticate,
+  requireRole('admin', 'superadmin'),
+  asyncHandler(exportAssessmentReport)
+);
+
 publicAssessmentRouter.get(
   '/join/:code',
   authenticate,

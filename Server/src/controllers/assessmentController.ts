@@ -159,10 +159,8 @@ export async function getAdminAssessments(req: Request, res: Response): Promise<
 /** Candidate: Join / Validate code and view instructions */
 export async function joinAssessment(req: Request, res: Response): Promise<void> {
   const authUser = getAuthUser(req);
-  const codeParam = req.params.code;
-  const rawCode = (Array.isArray(codeParam) ? codeParam[0] : codeParam)
-    ?.trim()
-    .toUpperCase();
+  const rawParam = req.params.code;
+  const rawCode = (typeof rawParam === 'string' ? rawParam : Array.isArray(rawParam) ? rawParam[0] : '')?.trim().toUpperCase();
 
   if (!rawCode) {
     throw new HttpError(400, 'VALIDATION_ERROR', 'Access code is required.');

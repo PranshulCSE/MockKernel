@@ -7,6 +7,7 @@ import {
   Terminal,
   Trophy,
   Mic,
+  ShieldCheck,
   Menu,
   X,
 } from 'lucide-react'
@@ -31,6 +32,7 @@ export function Navbar() {
   const navLinks = [
     { to: '/practice', label: 'Practice', icon: Terminal },
     { to: '/contests', label: 'Contests', icon: Trophy },
+    { to: '/assessments/join', label: 'Join Assessment', icon: ShieldCheck },
     { to: '/interview', label: 'Mock Interview', icon: Mic },
     ...(user ? [{ to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard }] : []),
     ...(isAdmin ? [{ to: '/admin', label: 'Admin Suite', icon: Shield }] : []),
