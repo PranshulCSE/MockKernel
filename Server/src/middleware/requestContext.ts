@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
+import { writeLog } from '../utils/logger.js';
 
 export interface RequestWithContext extends Request {
   requestId?: string;
@@ -49,6 +50,7 @@ export function requestContext(req: Request, res: Response, next: NextFunction):
     };
 
     const serialized = JSON.stringify(logEntry);
+    void writeLog(logEntry);
     if (level === 'error') {
       console.error(serialized);
     } else if (level === 'warn') {
