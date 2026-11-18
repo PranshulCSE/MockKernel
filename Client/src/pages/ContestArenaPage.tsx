@@ -205,7 +205,7 @@ export default function ContestArenaPage() {
         setCurrentProblem({
           id: activePid,
           title: activeTitle,
-          difficulty: activeDifficulty,
+          difficulty: (activeDifficulty as 'Easy' | 'Medium' | 'Hard') || 'Medium',
           supportedLanguages:
             activeProblemRef?.supportedLanguages?.length
               ? activeProblemRef.supportedLanguages
@@ -235,7 +235,7 @@ Input and Output formats follow standard competitive programming conventions.`,
     return () => {
       cancelled = true
     }
-  }, [activePid, activeTitle, activeDifficulty])
+  }, [activePid, activeTitle, activeDifficulty, activeProblemRef?.supportedLanguages])
 
   // Draft loading per problem in contest
   useEffect(() => {
