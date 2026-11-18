@@ -18,12 +18,12 @@ async function bootstrap() {
   const env = validateEnv();
   await connectDB(env.mongoUri);
   await syncProblemSerialCounter();
-  await connectRedis();
+  const redisReady = await connectRedis();
 
   const app = createApp();
   const httpServer = createServer(app);
   const io = createSocketServer(httpServer);
-  const verdictWatcher = startVerdictWatcher(io);
+  const verdictWatcher = startVerdictWatcher(io, { useQueue: redisReady });
 
   httpServer.listen(env.port, () => {
     console.log(`[Server] Running on port ${env.port}`);

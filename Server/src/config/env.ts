@@ -33,6 +33,7 @@ export interface EnvConfig {
   redisPort: number;
   redisPassword?: string;
   redisUrl?: string;
+  redisEnabled: boolean;
   jwtSecret: string;
   jwtExpiresIn: string;
   googleClientId?: string;
@@ -65,6 +66,14 @@ function parseCorsOrigins(): string[] {
     .filter((item) => item.length > 0);
 
   return origins.length > 0 ? origins : ['http://localhost:5173'];
+}
+
+/** Redis is opt-in locally and on by default in production. */
+function parseRedisEnabled(nodeEnv: string): boolean {
+  const raw = process.env.REDIS_ENABLED?.trim().toLowerCase();
+  if (raw === 'true') return true;
+  if (raw === 'false') return false;
+  return nodeEnv === 'production';
 }
 
 /**
@@ -149,6 +158,7 @@ export function validateEnv(): EnvConfig {
 
 /** Reads current process.env into a typed configuration object. */
 export function getEnvConfig(): EnvConfig {
+  const nodeEnv = process.env.NODE_ENV || 'development';
   const rawThreshold = Number(process.env.PLAGIARISM_THRESHOLD);
   const plagiarismThreshold =
     Number.isFinite(rawThreshold) && rawThreshold > 0 && rawThreshold <= 1 ? rawThreshold : 0.85;
@@ -165,13 +175,14 @@ export function getEnvConfig(): EnvConfig {
   const corsOrigins = parseCorsOrigins();
 
   return {
-    nodeEnv: process.env.NODE_ENV || 'development',
+    nodeEnv,
     port,
     mongoUri: process.env.MONGODB_URI?.trim() || '',
     redisHost: process.env.REDIS_HOST?.trim() || '127.0.0.1',
     redisPort,
     ...(process.env.REDIS_PASSWORD ? { redisPassword: process.env.REDIS_PASSWORD } : {}),
     ...(process.env.REDIS_URL?.trim() ? { redisUrl: process.env.REDIS_URL.trim() } : {}),
+    redisEnabled: parseRedisEnabled(nodeEnv),
     jwtSecret: process.env.JWT_SECRET?.trim() || '',
     jwtExpiresIn: process.env.JWT_EXPIRES_IN?.trim() || '7d',
     ...(process.env.GOOGLE_CLIENT_ID?.trim()

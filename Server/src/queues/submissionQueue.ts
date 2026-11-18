@@ -1,6 +1,9 @@
+import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { Queue } from 'bullmq';
 import { getEnvConfig } from '../config/env.js';
-import { getRedisClient } from '../config/redis.js';
+import { getRedisClient, isRedisReady } from '../config/redis.js';
 import { HttpError } from '../utils/http.js';
 
 export interface SubmissionJobTestCase {
@@ -37,8 +40,88 @@ function getSubmissionQueue(): Queue<SubmissionJobData> {
   return submissionQueue;
 }
 
-/** Enqueues a code execution job onto BullMQ for the Worker pool. */
+function resolveWorkerDirectory(): string {
+  if (process.env.WORKER_DIR) {
+    const configured = resolve(process.env.WORKER_DIR);
+    if (!existsSync(resolve(configured, 'package.json'))) {
+      throw new Error(`Worker package not found at ${configured}`);
+    }
+    return configured;
+  }
+
+  const candidates = [
+    resolve(process.cwd(), '..', 'Worker'),
+    resolve(process.cwd(), 'Worker'),
+  ];
+  const found = candidates.find((dir) => existsSync(resolve(dir, 'package.json')));
+  if (!found) {
+    throw new Error('Worker package not found; set WORKER_DIR to its location.');
+  }
+  return found;
+}
+
+/**
+ * Runs a submission through the Worker package directly when Redis is not
+ * available. The Worker writes the verdict to MongoDB; the server's verdict
+ * watcher emits the result to the client.
+ */
+function startLocalSubmission(jobData: SubmissionJobData): void {
+  const workerDir = resolveWorkerDirectory();
+  const compiledScript = resolve(workerDir, 'dist', 'scripts', 'processSubmission.js');
+  const tsxCli = resolve(workerDir, 'node_modules', 'tsx', 'dist', 'cli.mjs');
+  const sourceScript = resolve(workerDir, 'src', 'scripts', 'processSubmission.ts');
+
+  let command: string;
+  let args: string[];
+  let useShell = false;
+
+  if (existsSync(compiledScript)) {
+    command = process.execPath;
+    args = [compiledScript, jobData.submissionId];
+  } else if (existsSync(tsxCli) && existsSync(sourceScript)) {
+    command = process.execPath;
+    args = [tsxCli, sourceScript, jobData.submissionId];
+  } else {
+    command = 'npm';
+    args = ['run', 'process-submission', '--', jobData.submissionId];
+    useShell = process.platform === 'win32';
+  }
+
+  const child = spawn(command, args, {
+    cwd: workerDir,
+    env: { ...process.env, USE_LOCAL_RUNNER: 'true' },
+    stdio: 'ignore',
+    shell: useShell,
+  });
+
+  child.once('error', (err) => {
+    console.error('[Server] Local submission runner failed to start:', err.message);
+  });
+  child.once('exit', (code) => {
+    if (code !== null && code !== 0) {
+      console.warn(
+        `[Server] Local submission runner exited with code ${code} for ${jobData.submissionId}.`
+      );
+    }
+  });
+}
+
+/** Enqueues a code execution job, or falls back to direct local execution. */
 export async function enqueueSubmission(jobData: SubmissionJobData): Promise<string> {
+  if (!isRedisReady()) {
+    try {
+      startLocalSubmission(jobData);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new HttpError(
+        503,
+        'QUEUE_UNAVAILABLE',
+        `Submission execution queue is unavailable: ${message}`
+      );
+    }
+    return `local-${jobData.submissionId}`;
+  }
+
   const client = getRedisClient();
   if (client.status !== 'ready') {
     try {

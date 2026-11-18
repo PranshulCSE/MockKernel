@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { getDbStatus, isDbConnected, pingDb } from '../config/db.js';
 import { getEnvConfig } from '../config/env.js';
-import { getRedisClient, pingRedis } from '../config/redis.js';
+import { getRedisClient, isRedisEnabled, pingRedis } from '../config/redis.js';
 
 export interface HealthControllerDeps {
   checkJudge0?: () => Promise<{ ok: boolean; status?: number; message?: string }>;
@@ -39,6 +39,13 @@ async function defaultCheckJudge0(): Promise<{
     if (res.ok) {
       return { ok: true, status: res.status };
     }
+    if (process.env.NODE_ENV === 'development' || process.env.USE_LOCAL_RUNNER === 'true') {
+      return {
+        ok: true,
+        status: res.status,
+        message: 'Local execution fallback active (Judge0 bypassed)',
+      };
+    }
     return {
       ok: false,
       status: res.status,
@@ -69,7 +76,8 @@ export function createHealthHandlers(deps: HealthControllerDeps = {}) {
   async function health(_req: Request, res: Response): Promise<void> {
     const db = getDbStatus();
     const dbOk = isDbConnected();
-    const redisStatus = getRedisClient().status ?? 'unknown';
+    const redisEnabled = isRedisEnabled();
+    const redisStatus = redisEnabled ? getRedisClient().status ?? 'unknown' : 'disabled';
 
     res.status(dbOk ? 200 : 503).json({
       status: dbOk ? 'ok' : 'degraded',
@@ -84,9 +92,11 @@ export function createHealthHandlers(deps: HealthControllerDeps = {}) {
   }
 
   async function readiness(_req: Request, res: Response): Promise<void> {
+    const redisEnabled = isRedisEnabled();
+    const redisCheckProvided = Boolean(deps.checkRedisPing);
     const [mongoOk, redisOk, judge0] = await Promise.all([
       checkDbPing(),
-      checkRedisPing(),
+      redisEnabled || redisCheckProvided ? checkRedisPing() : Promise.resolve(true),
       checkJudge0(),
     ]);
 
@@ -96,7 +106,10 @@ export function createHealthHandlers(deps: HealthControllerDeps = {}) {
       timestamp: new Date().toISOString(),
       checks: {
         mongodb: { status: mongoOk ? 'ok' : 'unavailable' },
-        redis: { status: redisOk ? 'ok' : 'unavailable' },
+        redis: {
+          status: redisOk ? 'ok' : 'unavailable',
+          ...(redisEnabled ? {} : { mode: 'disabled' }),
+        },
         judge0: {
           status: judge0.ok ? 'ok' : 'unavailable',
           ...(judge0.status !== undefined ? { httpStatus: judge0.status } : {}),
