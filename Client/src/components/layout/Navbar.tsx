@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Link, NavLink, useNavigate, useLocation } from 'react-router'
+import { useState } from 'react'
+import { Link, NavLink, useNavigate } from 'react-router'
 import {
   LogOut,
   Shield,
@@ -19,13 +19,7 @@ export function Navbar() {
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
   const navigate = useNavigate()
-  const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-
-  // Close mobile drawer when route changes
-  useEffect(() => {
-    setMobileMenuOpen(false)
-  }, [location.pathname])
 
   const handleLogout = async () => {
     await logout()
@@ -44,14 +38,19 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-base/85 backdrop-blur-xl transition-all">
-      <nav aria-label="Main" className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-6 lg:gap-8">
-          <Link to="/" aria-label="MockKernel home" className="shrink-0 flex items-center gap-2 group">
+      <nav aria-label="Main" className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+        <div className="flex min-w-0 items-center gap-6 lg:gap-8">
+          <Link
+            to="/"
+            aria-label="MockKernel home"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex shrink-0 items-center gap-2 group"
+          >
             <Logo />
           </Link>
 
           {/* Desktop Navigation Links */}
-          <ul className="hidden md:flex items-center gap-1">
+          <ul className="hidden lg:flex items-center gap-1">
             {navLinks.map((l) => (
               <li key={l.to}>
                 <NavLink
@@ -74,7 +73,7 @@ export function Navbar() {
         </div>
 
         {/* Right Desktop User & Auth Area */}
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden lg:flex items-center gap-3">
           {user ? (
             <div className="flex items-center gap-3">
               {isAdmin && (
@@ -125,15 +124,21 @@ export function Navbar() {
         </div>
 
         {/* Mobile Hamburger Toggle Button */}
-        <div className="flex md:hidden items-center gap-2">
+        <div className="flex lg:hidden items-center gap-2">
           {user && (
-            <Link to="/dashboard" className="flex items-center">
+            <Link
+              to="/dashboard"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center"
+              aria-label="Open dashboard"
+            >
               <span className="grid size-8 place-items-center rounded-full bg-cyan/20 border border-cyan/40 text-xs font-bold text-cyan">
                 {user.name.charAt(0).toUpperCase()}
               </span>
             </Link>
           )}
           <button
+            type="button"
             onClick={() => setMobileMenuOpen((prev) => !prev)}
             aria-label="Toggle navigation menu"
             aria-expanded={mobileMenuOpen}
@@ -146,18 +151,18 @@ export function Navbar() {
 
       {/* Mobile Collapsible Dropdown Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-b border-white/10 bg-base/95 backdrop-blur-2xl px-4 py-5 animate-fadeIn">
+        <div className="lg:hidden max-h-[calc(100vh-4rem)] overflow-y-auto border-b border-white/10 bg-base/95 backdrop-blur-2xl px-4 py-5 animate-fadeIn">
           <div className="flex flex-col gap-4">
             {/* User status banner if logged in */}
             {user && (
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                <div className="flex items-center gap-3">
-                  <span className="grid size-9 place-items-center rounded-full bg-cyan/20 border border-cyan/40 text-sm font-bold text-cyan shadow-glow-cyan">
+              <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-cyan/20 border border-cyan/40 text-sm font-bold text-cyan shadow-glow-cyan">
                     {user.name.charAt(0).toUpperCase()}
                   </span>
-                  <div className="flex flex-col">
-                    <span className="text-sm font-semibold text-ink">{user.name}</span>
-                    <span className="text-xs text-muted font-mono">{user.email}</span>
+                  <div className="flex min-w-0 flex-col">
+                    <span className="truncate text-sm font-semibold text-ink">{user.name}</span>
+                    <span className="truncate text-xs text-muted font-mono">{user.email}</span>
                   </div>
                 </div>
                 {isAdmin && (
@@ -195,6 +200,7 @@ export function Navbar() {
             <div className="border-t border-white/10 pt-3 flex flex-col gap-2">
               {user ? (
                 <button
+                  type="button"
                   onClick={() => {
                     setMobileMenuOpen(false)
                     handleLogout()

@@ -121,7 +121,7 @@ export default function InterviewHistoryPage() {
   ]
 
   return (
-    <div className="flex flex-col gap-8 max-w-5xl mx-auto pb-16">
+    <div className="mx-auto flex w-full min-w-0 max-w-5xl flex-col gap-8 pb-16">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-6">
         <div>
