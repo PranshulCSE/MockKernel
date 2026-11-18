@@ -173,28 +173,41 @@ export default function ContestArenaPage() {
   }, [contestId])
 
   // Load active problem details
-  const activeProblemRef: ContestProblemRef | undefined = contest?.problems?.[activeProblemIndex]
+  const activeProblemRef: any = contest?.problems?.[activeProblemIndex]
+  const activePid =
+    activeProblemRef?.problem?.id ||
+    activeProblemRef?.problemId ||
+    activeProblemRef?.id ||
+    ''
+  const activeTitle =
+    activeProblemRef?.problem?.title ||
+    activeProblemRef?.title ||
+    `Problem ${String.fromCharCode(65 + activeProblemIndex)}`
+  const activeDifficulty =
+    activeProblemRef?.problem?.difficulty ||
+    activeProblemRef?.difficulty ||
+    'Medium'
+  const activePoints = activeProblemRef?.points ?? 100
 
   useEffect(() => {
-    if (!activeProblemRef?.problem?.id) return
-    const pid = activeProblemRef.problem.id
+    if (!activePid) return
 
     let cancelled = false
 
     const loadProblem = async () => {
       setLoadingProblem(true)
       try {
-        const p = await getProblemById(pid)
+        const p = await getProblemById(activePid)
         if (!cancelled) setCurrentProblem(p)
       } catch {
         if (cancelled) return
         // Fallback problem data
         setCurrentProblem({
-          id: pid,
-          title: activeProblemRef.problem.title,
-          difficulty: activeProblemRef.problem.difficulty,
+          id: activePid,
+          title: activeTitle,
+          difficulty: activeDifficulty,
           supportedLanguages: ['python', 'cpp', 'java', 'javascript'],
-          statement: `Solve the problem "${activeProblemRef.problem.title}" within the contest constraints.
+          statement: `Solve the problem "${activeTitle}" within the contest constraints.
 
 Input and Output formats follow standard competitive programming conventions.`,
           constraints: '1 <= N <= 10^5\nTime limit: 2.0s\nMemory limit: 256MB',
@@ -219,13 +232,12 @@ Input and Output formats follow standard competitive programming conventions.`,
     return () => {
       cancelled = true
     }
-  }, [activeProblemRef?.problem?.id, activeProblemRef?.problem?.title, activeProblemRef?.problem?.difficulty])
+  }, [activePid, activeTitle, activeDifficulty])
 
   // Draft loading per problem in contest
   useEffect(() => {
-    if (!activeProblemRef?.problem?.id || !contestId) return
-    const pid = activeProblemRef.problem.id
-    const draftKey = `mk_contest_${contestId}_${pid}_${language}`
+    if (!activePid || !contestId) return
+    const draftKey = `mk_contest_${contestId}_${activePid}_${language}`
     const saved = localStorage.getItem(draftKey)
 
     const defaultCode =
@@ -244,14 +256,13 @@ Input and Output formats follow standard competitive programming conventions.`,
     }
 
     applyDraft()
-  }, [contestId, activeProblemRef?.problem?.id, language, currentProblem])
+  }, [contestId, activePid, language, currentProblem])
 
   const handleCodeChange = (newVal: string | undefined) => {
     const text = newVal ?? ''
     setCode(text)
-    if (!activeProblemRef?.problem?.id || !contestId) return
-    const pid = activeProblemRef.problem.id
-    const draftKey = `mk_contest_${contestId}_${pid}_${language}`
+    if (!activePid || !contestId) return
+    const draftKey = `mk_contest_${contestId}_${activePid}_${language}`
     localStorage.setItem(draftKey, text)
     setIsDirty(true)
   }
@@ -265,8 +276,7 @@ Input and Output formats follow standard competitive programming conventions.`,
 
   // Run / Submit handler scoped to contestId
   const handleExecute = async (mode: 'run' | 'submit') => {
-    if (!activeProblemRef?.problem?.id || !contestId || cooldownSeconds > 0) return
-    const pid = activeProblemRef.problem.id
+    if (!activePid || !contestId || cooldownSeconds > 0) return
 
     setConsoleTab('output')
     setExecutionState({
@@ -280,7 +290,7 @@ Input and Output formats follow standard competitive programming conventions.`,
 
     try {
       const payload = {
-        problemId: pid,
+        problemId: activePid,
         language,
         sourceCode: code,
         contestId,
@@ -302,11 +312,11 @@ Input and Output formats follow standard competitive programming conventions.`,
 
           if (mode === 'submit') {
             if (update.verdict === 'ACCEPTED') {
-              setSolvedStatus((prev) => ({ ...prev, [pid]: 'SOLVED' }))
+              setSolvedStatus((prev) => ({ ...prev, [activePid]: 'SOLVED' }))
             } else if (update.verdict !== 'PENDING' && update.verdict !== 'RUNNING') {
               setSolvedStatus((prev) => ({
                 ...prev,
-                [pid]: prev[pid] === 'SOLVED' ? 'SOLVED' : 'ATTEMPTED',
+                [activePid]: prev[activePid] === 'SOLVED' ? 'SOLVED' : 'ATTEMPTED',
               }))
             }
           }
@@ -708,9 +718,9 @@ Input and Output formats follow standard competitive programming conventions.`,
 
         {/* Center: Problem Navigation Tabs (Problem A, B, C) */}
         <div className="flex items-center gap-1.5" role="tablist">
-          {contest.problems?.map((pRef, idx) => {
+          {contest.problems?.map((pRef: any, idx) => {
             const letter = String.fromCharCode(65 + idx)
-            const pid = pRef.problem.id
+            const pid = pRef?.problem?.id || pRef?.problemId || pRef?.id || `problem-${idx}`
             const pStatus = solvedStatus[pid] || 'UNTOUCHED'
             const isSelected = activeProblemIndex === idx
 

@@ -20,6 +20,8 @@ Copy `Worker/.env.example` to `Worker/.env`:
 | `MAX_POLL_ATTEMPTS` | No | `10` | Max Judge0 polling attempts; a hard 10s execution guard also applies |
 | `WORKER_CONCURRENCY` | No | `5` | Concurrent BullMQ jobs |
 
+The Worker loads its `.env` relative to its own directory, so it can also find this file when launched with a different current working directory.
+
 ## Commands
 
 ```bash
