@@ -11,6 +11,7 @@
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
     "local-judge": "tsx src/scripts/mockJudge0.ts",
+    "backfill:problem-serials": "tsx src/scripts/backfillProblemSerials.ts",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit",
     "test": "vitest run"
   },

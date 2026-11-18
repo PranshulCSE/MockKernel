@@ -7,7 +7,7 @@ export interface ProctoringLockOptions {
   sessionId?: string
   isActive: boolean
   initialStrikes?: number
-  getCodeSubmissions?: () => Record<string, any>
+  getCodeSubmissions?: () => Record<string, unknown>
   onAutoSubmitted?: (reason: string) => void
 }
 
@@ -27,12 +27,16 @@ export function useProctoringLock({
   const [isTerminated, setIsTerminated] = useState<boolean>(false)
 
   const strikesRef = useRef(strikes)
-  strikesRef.current = strikes
-
   const isTerminatedRef = useRef(isTerminated)
-  isTerminatedRef.current = isTerminated
-
   const lastViolationTimeRef = useRef<number>(0)
+
+  useEffect(() => {
+    strikesRef.current = strikes
+  }, [strikes])
+
+  useEffect(() => {
+    isTerminatedRef.current = isTerminated
+  }, [isTerminated])
 
   // Request fullscreen
   const requestFullscreen = useCallback(async () => {
@@ -102,10 +106,14 @@ export function useProctoringLock({
   // Fullscreen event listener
   useEffect(() => {
     const handleFullscreenChange = () => {
+      const doc = document as Document & {
+        webkitFullscreenElement?: Element | null
+        msFullscreenElement?: Element | null
+      }
       const isCurrentlyFullscreen = Boolean(
         document.fullscreenElement ||
-          (document as any).webkitFullscreenElement ||
-          (document as any).msFullscreenElement
+          doc.webkitFullscreenElement ||
+          doc.msFullscreenElement
       )
 
       setIsFullscreen(isCurrentlyFullscreen)

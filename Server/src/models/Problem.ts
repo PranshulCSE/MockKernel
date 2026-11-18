@@ -30,7 +30,7 @@ export type ProblemDocument = HydratedDocument<IProblem>;
 
 const problemSchema = new Schema<IProblem>(
   {
-    serialNo: { type: Number, index: true },
+    serialNo: { type: Number, index: true, unique: true, sparse: true },
     title: {
       type: String,
       required: true,

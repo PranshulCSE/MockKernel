@@ -180,7 +180,7 @@ export function getEnvConfig(): EnvConfig {
     ...(process.env.GROQ_API_KEY?.trim()
       ? { groqApiKey: process.env.GROQ_API_KEY.trim() }
       : {}),
-    groqModel: process.env.GROQ_MODEL?.trim() || 'llama-3.3-70b-versatile',
+    groqModel: process.env.GROQ_MODEL?.trim() || 'openai/gpt-oss-120b',
     ...(process.env.GEMINI_API_KEY?.trim()
       ? { geminiApiKey: process.env.GEMINI_API_KEY.trim() }
       : {}),

@@ -13,8 +13,15 @@ export const INTERVIEW_TOPICS = [
   'Operating Systems',
   'DBMS',
   'Data Structures',
+  'MERN Stack',
+  'Python',
+  'System Design',
+  'React & Frontend',
+  'DevOps & Cloud',
 ] as const;
-export type InterviewTopic = (typeof INTERVIEW_TOPICS)[number];
+
+/** Interview subjects are intentionally open-ended so candidates can request any stack. */
+export type InterviewTopic = string;
 
 export interface IInterviewQuestion {
   question: string;

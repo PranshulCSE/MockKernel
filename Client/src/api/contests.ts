@@ -20,11 +20,10 @@ export interface ContestSummary {
 }
 
 export interface ContestProblemRef {
-  problem: {
-    id: string
-    title: string
-    difficulty: 'Easy' | 'Medium' | 'Hard'
-  }
+  problemId: string
+  title: string
+  difficulty?: 'Easy' | 'Medium' | 'Hard'
+  supportedLanguages?: string[]
   points: number
   order: number
 }
@@ -80,80 +79,37 @@ export async function getContestById(id: string): Promise<ContestDetail> {
 }
 
 export async function joinContest(id: string) {
-  if (id.startsWith('mock-')) {
-    try {
-      const stored = JSON.parse(localStorage.getItem('mk_joined_contests') || '[]')
-      if (!stored.includes(id)) {
-        stored.push(id)
-        localStorage.setItem('mk_joined_contests', JSON.stringify(stored))
-      }
-    } catch {}
-    return { contestId: id, joinedAt: new Date().toISOString() }
+  const res = await fetch(`${API_BASE_URL}/api/contests/${id}/join`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  })
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data?.error?.message || 'Failed to join contest')
   }
 
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/contests/${id}/join`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-    })
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      throw new Error(data?.error?.message || 'Failed to join contest')
-    }
-
-    const json = await res.json()
-    return json.data
-  } catch (err: any) {
-    // If backend is offline or connection refused, allow preview join
-    if (err?.message?.includes('Failed to fetch') || err?.name === 'TypeError') {
-      try {
-        const stored = JSON.parse(localStorage.getItem('mk_joined_contests') || '[]')
-        if (!stored.includes(id)) {
-          stored.push(id)
-          localStorage.setItem('mk_joined_contests', JSON.stringify(stored))
-        }
-      } catch {}
-      return { contestId: id, joinedAt: new Date().toISOString() }
-    }
-    throw err
-  }
+  const json = await res.json()
+  return json.data
 }
 
 export async function leaveContest(id: string) {
-  if (id.startsWith('mock-')) {
-    try {
-      const stored = JSON.parse(localStorage.getItem('mk_joined_contests') || '[]')
-      const next = stored.filter((c: string) => c !== id)
-      localStorage.setItem('mk_joined_contests', JSON.stringify(next))
-    } catch {}
+  const res = await fetch(`${API_BASE_URL}/api/contests/${id}/leave`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  })
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data?.error?.message || 'Failed to leave contest')
+  }
+
+  if (res.status === 204) {
     return { contestId: id, left: true }
   }
 
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/contests/${id}/leave`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-    })
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      throw new Error(data?.error?.message || 'Failed to leave contest')
-    }
-
-    const json = await res.json()
-    return json.data
-  } catch (err: any) {
-    if (err?.message?.includes('Failed to fetch') || err?.name === 'TypeError') {
-      try {
-        const stored = JSON.parse(localStorage.getItem('mk_joined_contests') || '[]')
-        const next = stored.filter((c: string) => c !== id)
-        localStorage.setItem('mk_joined_contests', JSON.stringify(next))
-      } catch {}
-      return { contestId: id, left: true }
-    }
-    throw err
-  }
+  const json = await res.json()
+  return json.data
 }
 
 export async function getContestLeaderboard(id: string, params?: { page?: number; limit?: number }) {
@@ -170,5 +126,8 @@ export async function getContestLeaderboard(id: string, params?: { page?: number
   }
 
   const json = await res.json()
-  return json.data
+  return {
+    ...json.data,
+    pagination: json.pagination,
+  }
 }

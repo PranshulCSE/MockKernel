@@ -25,6 +25,7 @@ import {
   readString,
 } from '../utils/request.js';
 import { runInTransaction } from '../utils/transaction.js';
+import { getNextProblemSerialNo } from '../services/problemSerialService.js';
 
 type TestCaseInput = {
   input: string;
@@ -512,7 +513,7 @@ export async function listPublicProblems(
 
   const [problems, total] = await Promise.all([
     Problem.find(filter)
-      .sort({ createdAt: -1 })
+      .sort({ serialNo: 1, createdAt: 1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .exec(),
@@ -553,7 +554,7 @@ export async function listAdminProblems(
 
   const [problems, total] = await Promise.all([
     Problem.find(filter)
-      .sort({ createdAt: -1 })
+      .sort({ serialNo: 1, createdAt: 1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .exec(),
@@ -583,8 +584,10 @@ export async function createProblem(
 
   const problem = await runInTransaction(
     async (session) => {
+      const serialNo = await getNextProblemSerialNo(session);
       const created = new Problem({
         ...input,
+        serialNo,
         createdBy: new Types.ObjectId(authUser.id),
       });
       await created.save(session ? { session } : {});
@@ -592,8 +595,10 @@ export async function createProblem(
       return created;
     },
     async () => {
+      const serialNo = await getNextProblemSerialNo();
       const created = new Problem({
         ...input,
+        serialNo,
         createdBy: new Types.ObjectId(authUser.id),
       });
       await created.save();

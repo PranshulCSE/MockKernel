@@ -23,6 +23,7 @@ export {
   type SupportedLanguage,
 } from './Problem.js';
 export { TestCase, type ITestCase, type TestCaseDocument } from './TestCase.js';
+export { Counter, type ICounter } from './Counter.js';
 export {
   Submission,
   type ISubmission,

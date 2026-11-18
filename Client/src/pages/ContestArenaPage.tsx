@@ -139,22 +139,30 @@ export default function ContestArenaPage() {
           participantCount: 88,
           problems: [
             {
-              problem: { id: 'two-sum', title: 'Two Sum', difficulty: 'Easy' },
+              problemId: 'two-sum',
+              title: 'Two Sum',
+              difficulty: 'Easy',
               points: 100,
               order: 0,
             },
             {
-              problem: { id: 'valid-parentheses', title: 'Valid Parentheses', difficulty: 'Easy' },
+              problemId: 'valid-parentheses',
+              title: 'Valid Parentheses',
+              difficulty: 'Easy',
               points: 200,
               order: 1,
             },
             {
-              problem: { id: 'lru-cache', title: 'LRU Cache', difficulty: 'Medium' },
+              problemId: 'lru-cache',
+              title: 'LRU Cache',
+              difficulty: 'Medium',
               points: 300,
               order: 2,
             },
             {
-              problem: { id: 'merge-k-lists', title: 'Merge k Sorted Lists', difficulty: 'Hard' },
+              problemId: 'merge-k-lists',
+              title: 'Merge k Sorted Lists',
+              difficulty: 'Hard',
               points: 400,
               order: 3,
             },
@@ -173,21 +181,13 @@ export default function ContestArenaPage() {
   }, [contestId])
 
   // Load active problem details
-  const activeProblemRef: any = contest?.problems?.[activeProblemIndex]
-  const activePid =
-    activeProblemRef?.problem?.id ||
-    activeProblemRef?.problemId ||
-    activeProblemRef?.id ||
-    ''
+  const activeProblemRef: ContestProblemRef | undefined =
+    contest?.problems?.[activeProblemIndex]
+  const activePid = activeProblemRef?.problemId || ''
   const activeTitle =
-    activeProblemRef?.problem?.title ||
     activeProblemRef?.title ||
     `Problem ${String.fromCharCode(65 + activeProblemIndex)}`
-  const activeDifficulty =
-    activeProblemRef?.problem?.difficulty ||
-    activeProblemRef?.difficulty ||
-    'Medium'
-  const activePoints = activeProblemRef?.points ?? 100
+  const activeDifficulty = activeProblemRef?.difficulty || 'Medium'
 
   useEffect(() => {
     if (!activePid) return
@@ -206,7 +206,10 @@ export default function ContestArenaPage() {
           id: activePid,
           title: activeTitle,
           difficulty: activeDifficulty,
-          supportedLanguages: ['python', 'cpp', 'java', 'javascript'],
+          supportedLanguages:
+            activeProblemRef?.supportedLanguages?.length
+              ? activeProblemRef.supportedLanguages
+              : ['python', 'cpp', 'java', 'javascript'],
           statement: `Solve the problem "${activeTitle}" within the contest constraints.
 
 Input and Output formats follow standard competitive programming conventions.`,
@@ -717,10 +720,10 @@ Input and Output formats follow standard competitive programming conventions.`,
         </div>
 
         {/* Center: Problem Navigation Tabs (Problem A, B, C) */}
-        <div className="flex items-center gap-1.5" role="tablist">
-          {contest.problems?.map((pRef: any, idx) => {
+        <div className="flex shrink-0 items-center gap-1 sm:gap-1.5" role="tablist">
+          {contest.problems?.map((pRef: ContestProblemRef, idx) => {
             const letter = String.fromCharCode(65 + idx)
-            const pid = pRef?.problem?.id || pRef?.problemId || pRef?.id || `problem-${idx}`
+            const pid = pRef.problemId || `problem-${idx}`
             const pStatus = solvedStatus[pid] || 'UNTOUCHED'
             const isSelected = activeProblemIndex === idx
 

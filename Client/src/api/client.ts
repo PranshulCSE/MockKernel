@@ -73,12 +73,14 @@ export async function apiClient<T = unknown>(endpoint: string, options: RequestO
   let response: Response
   try {
     response = await fetch(url, init)
-  } catch (networkErr: any) {
+  } catch (networkErr: unknown) {
+    const message =
+      networkErr instanceof Error ? networkErr.message : String(networkErr ?? '')
     throw new ApiClientError(0, {
       code: 'NETWORK_ERROR',
-      message: networkErr?.message?.includes('Failed to fetch')
+      message: message.includes('Failed to fetch')
         ? 'Could not connect to MockKernel backend server (connection refused).'
-        : networkErr?.message || 'Network error occurred.',
+        : message || 'Network error occurred.',
       details: { url },
     })
   }
