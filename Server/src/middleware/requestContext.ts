@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
+import { writeLog } from '../utils/logger.js';
 
 export interface RequestWithContext extends Request {
   requestId?: string;
@@ -35,7 +36,8 @@ export function requestContext(req: Request, res: Response, next: NextFunction):
     const durationMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
     const authUser = (req as RequestWithContext).authUser;
     const statusCode = res.statusCode;
-    const level = statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'info';
+    const level: 'error' | 'warn' | 'info' =
+      statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'info';
 
     const logEntry = {
       level,
@@ -49,6 +51,7 @@ export function requestContext(req: Request, res: Response, next: NextFunction):
     };
 
     const serialized = JSON.stringify(logEntry);
+    void writeLog(logEntry);
     if (level === 'error') {
       console.error(serialized);
     } else if (level === 'warn') {

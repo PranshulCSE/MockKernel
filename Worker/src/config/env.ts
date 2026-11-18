@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 
 let envLoaded = false;
@@ -10,14 +11,18 @@ export function loadWorkerEnv(): void {
   }
   envLoaded = true;
 
-  const localEnv = resolve(process.cwd(), '.env');
-  const rootEnv = resolve(process.cwd(), '../.env');
+  const workerDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+  const envPaths = [
+    resolve(process.cwd(), '.env'),
+    resolve(process.cwd(), '../.env'),
+    resolve(workerDirectory, '.env'),
+    resolve(workerDirectory, '../.env'),
+  ];
 
-  if (existsSync(localEnv)) {
-    dotenv.config({ path: localEnv, quiet: true });
-  }
-  if (existsSync(rootEnv)) {
-    dotenv.config({ path: rootEnv, quiet: true });
+  for (const envPath of new Set(envPaths)) {
+    if (existsSync(envPath)) {
+      dotenv.config({ path: envPath, quiet: true });
+    }
   }
 }
 
