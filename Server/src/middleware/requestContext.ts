@@ -36,7 +36,8 @@ export function requestContext(req: Request, res: Response, next: NextFunction):
     const durationMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
     const authUser = (req as RequestWithContext).authUser;
     const statusCode = res.statusCode;
-    const level = statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'info';
+    const level: 'error' | 'warn' | 'info' =
+      statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'info';
 
     const logEntry = {
       level,

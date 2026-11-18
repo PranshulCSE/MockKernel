@@ -40,9 +40,15 @@ export function Drawer({
 }: DrawerProps) {
   const drawerRef = useRef<HTMLDivElement>(null)
   const previousActiveElement = useRef<HTMLElement | null>(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+  const hasFocusedRef = useRef(false)
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) {
+      hasFocusedRef.current = false
+      return
+    }
 
     previousActiveElement.current = document.activeElement as HTMLElement
     const originalOverflow = document.body.style.overflow
@@ -51,7 +57,7 @@ export function Drawer({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault()
-        onClose()
+        onCloseRef.current()
         return
       }
 
@@ -81,28 +87,32 @@ export function Drawer({
 
     window.addEventListener('keydown', handleKeyDown)
 
-    const timer = setTimeout(() => {
-      if (drawerRef.current) {
-        const firstInput = drawerRef.current.querySelector<HTMLElement>(
-          'input, textarea, select, button:not([aria-label="Close drawer"])',
-        )
-        if (firstInput) {
-          firstInput.focus()
-        } else {
-          drawerRef.current.focus()
+    let timer: ReturnType<typeof setTimeout> | undefined
+    if (!hasFocusedRef.current) {
+      hasFocusedRef.current = true
+      timer = setTimeout(() => {
+        if (drawerRef.current) {
+          const firstInput = drawerRef.current.querySelector<HTMLElement>(
+            'input, textarea, select, button:not([aria-label="Close drawer"])',
+          )
+          if (firstInput) {
+            firstInput.focus()
+          } else {
+            drawerRef.current.focus()
+          }
         }
-      }
-    }, 50)
+      }, 50)
+    }
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
       document.body.style.overflow = originalOverflow
-      clearTimeout(timer)
+      if (timer) clearTimeout(timer)
       if (previousActiveElement.current && typeof previousActiveElement.current.focus === 'function') {
         previousActiveElement.current.focus()
       }
     }
-  }, [isOpen, onClose])
+  }, [isOpen])
 
   const slideDirection = position === 'right' ? { x: '100%' } : { x: '-100%' }
 
