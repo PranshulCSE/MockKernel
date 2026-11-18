@@ -25,7 +25,6 @@ import {
   getContestById,
   leaveContest as apiLeaveContest,
   type ContestDetail,
-  type ContestProblemRef,
 } from '../api/contests'
 import {
   getProblemById,
@@ -163,7 +162,6 @@ export default function ContestArenaPage() {
     activeProblemRef?.problem?.difficulty ||
     activeProblemRef?.difficulty ||
     'Medium'
-  const activePoints = activeProblemRef?.points ?? 100
 
   useEffect(() => {
     if (!activePid) return
@@ -730,17 +728,10 @@ Input and Output formats follow standard competitive programming conventions.`,
         </div>
 
         {/* Center: Problem Navigation Tabs (Problem A, B, C) */}
-<<<<<<< HEAD
-        <div className="flex items-center gap-1.5" role="tablist">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-1.5" role="tablist">
           {contest.problems?.map((pRef: any, idx) => {
             const letter = String.fromCharCode(65 + idx)
             const pid = pRef?.problem?.id || pRef?.problemId || pRef?.id || `problem-${idx}`
-=======
-        <div className="flex shrink-0 items-center gap-1 sm:gap-1.5" role="tablist">
-          {contest.problems?.map((pRef, idx) => {
-            const letter = String.fromCharCode(65 + idx)
-            const pid = pRef.problemId
->>>>>>> 3ab395cc2558404ea9a5b35a5ec07c6244ab7ada
             const pStatus = solvedStatus[pid] || 'UNTOUCHED'
             const isSelected = activeProblemIndex === idx
 
