@@ -47,7 +47,7 @@ export default function AdminLayout() {
       </div>
 
       {/* Admin Tab Navigation */}
-      <nav aria-label="Admin Navigation" className="flex items-center gap-2 border-b border-white/10 pb-2">
+      <nav aria-label="Admin Navigation" className="flex flex-wrap items-center gap-2 border-b border-white/10 pb-2">
         {navLinks.map((l) => (
           <NavLink
             key={l.to}
@@ -55,7 +55,7 @@ export default function AdminLayout() {
             end={l.end}
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold font-sans transition-colors',
+                'flex items-center gap-2 rounded-full px-3 sm:px-4 py-2 text-xs font-semibold font-sans transition-colors',
                 isActive
                   ? 'bg-brand text-ink shadow-glow'
                   : 'text-muted hover:text-ink hover:bg-white/5',

@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { ArrowRight, Code2, Mic } from 'lucide-react'
+import { ArrowRight, Code2, Mic, Trophy, ShieldCheck } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { GlassCard, VerdictBadge } from '../components/ui'
 
@@ -22,6 +22,24 @@ const modules = [
     cta: 'Open mock interview',
     glow: 'bg-cyan/20',
   },
+  {
+    to: '/contests',
+    icon: Trophy,
+    title: 'Live contests',
+    text: 'Join timed coding rounds, track your submissions, and compare results on live leaderboards.',
+    points: ['Live and scheduled events', 'Contest specific problem sets', 'Real-time standings'],
+    cta: 'Explore contests',
+    glow: 'bg-pink/20',
+  },
+  {
+    to: '/assessments/join',
+    icon: ShieldCheck,
+    title: 'Proctored assessments',
+    text: 'Enter an assessment with a code and complete a timed, monitored coding session.',
+    points: ['Timed problem solving', 'Camera and focus checks', 'Reviewable results'],
+    cta: 'Join assessment',
+    glow: 'bg-ok/20',
+  },
 ] as const
 
 const steps = [
@@ -38,9 +56,9 @@ export default function LandingPage() {
       <section className="grid items-center gap-8 lg:gap-12 lg:grid-cols-[1.1fr_1fr]">
         <div className="flex flex-col items-start gap-5 sm:gap-6">
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold leading-[1.15] sm:leading-[1.05]">
-            Solve it.
+            Practice with purpose.
             <br />
-            Then explain it.
+            <span className="bg-gradient-to-r from-violet to-cyan bg-clip-text text-transparent">Show what you know.</span>
           </h1>
           <p className="max-w-lg text-sm sm:text-lg text-muted leading-relaxed">
             Practice coding problems in a sandboxed editor, then talk through your approach with an
@@ -82,9 +100,10 @@ export default function LandingPage() {
 
       <section aria-labelledby="modules-title" className="flex flex-col gap-8">
         <h2 id="modules-title" className="text-3xl font-bold">
-          Two ways to practice
+          One platform. Four ways to grow.
         </h2>
-        <div className="grid gap-6 md:grid-cols-2">
+        <p className="max-w-2xl -mt-5 text-sm text-muted">Build confidence through coding practice, AI interviews, live competition, and structured assessments.</p>
+        <div className="grid gap-6 sm:grid-cols-2">
           {modules.map(({ to, icon: Icon, title, text, points, cta, glow }) => (
             <Link key={to} to={to} className="group relative block overflow-hidden rounded-card">
               <GlassCard className="flex h-full flex-col gap-5 p-8 transition duration-300 group-hover:border-white/25">

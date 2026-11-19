@@ -7,9 +7,9 @@ export default {
   theme: {
     extend: {
       colors: {
-        base: '#07070F',
-        ink: '#F5F5FF',
-        muted: '#9CA3C7',
+        base: 'rgb(var(--color-base) / <alpha-value>)',
+        ink: 'rgb(var(--color-ink) / <alpha-value>)',
+        muted: 'rgb(var(--color-muted) / <alpha-value>)',
         violet: '#7C3AED',
         cyan: '#06B6D4',
         pink: '#F472B6',

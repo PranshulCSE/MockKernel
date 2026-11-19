@@ -9,14 +9,54 @@ import {
   Clock,
   FileSpreadsheet,
   RefreshCw,
+  Pencil,
+  Trash2,
 } from 'lucide-react'
 import { assessmentsApi, type AdminAssessmentItem } from '../../api/assessments'
-import { Button, GlassCard, Badge } from '../../components/ui'
+import { Button, GlassCard, Badge, Modal, Input, useToast } from '../../components/ui'
 
 export default function AdminAssessmentsPage() {
   const [assessments, setAssessments] = useState<AdminAssessmentItem[]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
+  const [editing, setEditing] = useState<AdminAssessmentItem | null>(null)
+  const [deleting, setDeleting] = useState<AdminAssessmentItem | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [form, setForm] = useState({ title: '', description: '', code: '', durationMinutes: '60', startTime: '', endTime: '' })
+  const toast = useToast()
+
+  const editAssessment = (item: AdminAssessmentItem) => {
+    const localDate = (value: string) => {
+      const date = new Date(value)
+      return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
+    }
+    setEditing(item)
+    setForm({ title: item.title, description: item.description || '', code: item.code, durationMinutes: String(item.durationMinutes), startTime: localDate(item.startTime), endTime: localDate(item.endTime) })
+  }
+
+  const saveAssessment = async () => {
+    if (!editing) return
+    setBusy(true)
+    try {
+      await assessmentsApi.update(editing.id, { ...form, durationMinutes: Number(form.durationMinutes), startTime: new Date(form.startTime).toISOString(), endTime: new Date(form.endTime).toISOString() })
+      toast.success('Assessment updated.')
+      setEditing(null)
+      await fetchAssessments()
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not update assessment.') }
+    finally { setBusy(false) }
+  }
+
+  const removeAssessment = async () => {
+    if (!deleting) return
+    setBusy(true)
+    try {
+      await assessmentsApi.remove(deleting.id)
+      toast.success('Assessment and its candidate sessions were deleted.')
+      setDeleting(null)
+      await fetchAssessments()
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not delete assessment.') }
+    finally { setBusy(false) }
+  }
 
   const fetchAssessments = async () => {
     try {
@@ -175,12 +215,18 @@ export default function AdminAssessmentsPage() {
                     </td>
 
                     <td className="p-3.5 pr-6 text-right space-x-2">
+                      <Button variant="ghost" size="sm" className="text-xs" onClick={() => editAssessment(item)}>
+                        <Pencil className="size-3.5 mr-1.5" /> Edit
+                      </Button>
                       <Link to={`/admin/assessments/${item.id}/report`}>
                         <Button variant="ghost" size="sm" className="text-xs">
                           <FileSpreadsheet className="size-3.5 mr-1.5 text-cyan" />
                           View Report
                         </Button>
                       </Link>
+                      <Button variant="ghost" size="sm" className="text-xs text-bad" onClick={() => setDeleting(item)}>
+                        <Trash2 className="size-3.5 mr-1.5" /> Delete
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -189,6 +235,27 @@ export default function AdminAssessmentsPage() {
           </div>
         )}
       </GlassCard>
+
+      <Modal isOpen={Boolean(editing)} onClose={() => setEditing(null)} title="Edit assessment" description="Update the assessment details and availability window." footer={<>
+        <Button variant="ghost" onClick={() => setEditing(null)}>Cancel</Button>
+        <Button variant="primary" loading={busy} onClick={() => void saveAssessment()}>Save changes</Button>
+      </>}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Input label="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          <Input label="Access code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} />
+          <Input label="Duration (minutes)" type="number" min={5} max={1440} value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })} />
+          <Input label="Starts" type="datetime-local" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
+          <Input label="Ends" type="datetime-local" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
+          <label className="sm:col-span-2 flex flex-col gap-1.5 text-sm font-medium text-ink">Description<textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="rounded-ctl border border-white/10 bg-white/5 p-3 text-sm" /></label>
+        </div>
+      </Modal>
+
+      <Modal isOpen={Boolean(deleting)} onClose={() => setDeleting(null)} title="Delete assessment?" description="This permanently removes the assessment and all candidate sessions, results, and proctoring logs." footer={<>
+        <Button variant="ghost" onClick={() => setDeleting(null)}>Cancel</Button>
+        <Button variant="secondary" loading={busy} className="text-bad" onClick={() => void removeAssessment()}>Delete assessment</Button>
+      </>}>
+        <p className="text-sm text-muted">Delete <strong className="text-ink">{deleting?.title}</strong> and its stored results?</p>
+      </Modal>
     </div>
   )
 }
