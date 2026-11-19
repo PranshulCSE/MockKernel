@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router'
-import Editor, { type Monaco } from '@monaco-editor/react'
+import Editor, { type Monaco, type OnMount } from '@monaco-editor/react'
 import {
   ShieldAlert,
   Clock,
@@ -15,6 +15,8 @@ import {
 } from 'lucide-react'
 import {
   assessmentsApi,
+  getApiErrorMessage,
+  type AssessmentCodeSubmission,
   type AssessmentProblem,
   type AssessmentSessionState,
 } from '../api/assessments'
@@ -26,6 +28,15 @@ import { ProctorCamera } from '../components/proctoring/ProctorCamera'
 import { Button, GlassCard, Badge, ResizablePanels } from '../components/ui'
 import { useAuthStore } from '../store/authStore'
 import type { VerdictUpdatePayload } from '../types/socket'
+
+interface KeyboardShortcutEvent {
+  ctrlKey: boolean
+  metaKey: boolean
+  code: string
+  keyCode?: number
+  preventDefault: () => void
+  stopPropagation: () => void
+}
 
 const LANGUAGES = [
   { id: 'python', name: 'Python 3', monaco: 'python' },
@@ -90,7 +101,7 @@ export default function AssessmentArenaPage() {
 
   // Helper to compile submissions map for auto-submit
   const getSubmissionsSnapshot = useCallback(() => {
-    const payload: Record<string, any> = {}
+    const payload: Record<string, AssessmentCodeSubmission> = {}
     for (const p of problems) {
       const probCodes = codes[p._id] || {}
       const c = probCodes[language] ?? p.starterCode?.[language] ?? DEFAULT_STARTER_CODES[language] ?? ''
@@ -160,13 +171,9 @@ export default function AssessmentArenaPage() {
           }
         }
         setCodes(initialCodes)
-      } catch (err: any) {
+      } catch (err) {
         if (!isMounted) return
-        const msg =
-          err?.response?.data?.error?.message ||
-          err?.message ||
-          'Failed to initialize assessment session.'
-        setLoadError(msg)
+        setLoadError(getApiErrorMessage(err, 'Failed to initialize assessment session.'))
       } finally {
         if (isMounted) setLoading(false)
       }
@@ -179,26 +186,8 @@ export default function AssessmentArenaPage() {
     }
   }, [assessmentId])
 
-  // Persistent Countdown Timer
-  useEffect(() => {
-    if (!deadline || !session || session.status !== 'IN_PROGRESS') return
-
-    const interval = setInterval(() => {
-      const remaining = Math.max(0, Math.floor((deadline.getTime() - Date.now()) / 1000))
-      setTimeRemainingSeconds(remaining)
-
-      if (remaining <= 0) {
-        clearInterval(interval)
-        // Time expired: auto-submit assessment
-        void handleAutoSubmitTimeout()
-      }
-    }, 1000)
-
-    return () => clearInterval(interval)
-  }, [deadline, session])
-
   // Handle timeout auto submit
-  const handleAutoSubmitTimeout = async () => {
+  const handleAutoSubmitTimeout = useCallback(async () => {
     if (!assessmentId || !session || session.status !== 'IN_PROGRESS') return
     try {
       const submissions = getSubmissionsSnapshot()
@@ -218,7 +207,25 @@ export default function AssessmentArenaPage() {
     } catch (err) {
       console.warn('[AssessmentArena] Timeout submission error:', err)
     }
-  }
+  }, [assessmentId, session, getSubmissionsSnapshot])
+
+  // Persistent Countdown Timer
+  useEffect(() => {
+    if (!deadline || !session || session.status !== 'IN_PROGRESS') return
+
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, Math.floor((deadline.getTime() - Date.now()) / 1000))
+      setTimeRemainingSeconds(remaining)
+
+      if (remaining <= 0) {
+        clearInterval(interval)
+        // Time expired: auto-submit assessment
+        void handleAutoSubmitTimeout()
+      }
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [deadline, session, handleAutoSubmitTimeout])
 
   // Handle manual submit assessment
   const handleManualSubmit = async () => {
@@ -240,8 +247,8 @@ export default function AssessmentArenaPage() {
           : null
       )
       setShowSubmitModal(false)
-    } catch (err: any) {
-      alert(err?.response?.data?.error?.message || err?.message || 'Submission failed.')
+    } catch (err) {
+      alert(getApiErrorMessage(err, 'Submission failed.'))
     } finally {
       setSubmittingAssessment(false)
     }
@@ -309,9 +316,9 @@ export default function AssessmentArenaPage() {
         setIsRunningCode(false)
         setConsoleOutput('Code execution started.')
       }
-    } catch (err: any) {
+    } catch (err) {
       setIsRunningCode(false)
-      setConsoleOutput(`Execution Error: ${err?.message || 'Execution failed'}`)
+      setConsoleOutput(`Execution Error: ${getApiErrorMessage(err, 'Execution failed')}`)
     }
   }
 
@@ -340,9 +347,9 @@ export default function AssessmentArenaPage() {
   }
 
   // Monaco onMount lockdown (disable context menu, intercept copy/paste and inspector keys)
-  const handleEditorMount = (editor: any) => {
+  const handleEditorMount: OnMount = (editor) => {
     // Intercept keyboard shortcuts in Monaco
-    editor.onKeyDown((e: any) => {
+    editor.onKeyDown((e: KeyboardShortcutEvent) => {
       // Prevent copy / paste
       if (
         (e.ctrlKey || e.metaKey) &&

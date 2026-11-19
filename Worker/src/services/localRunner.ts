@@ -161,7 +161,8 @@ export class LocalRunnerService {
           const filePath = join(tempDir, 'solution.py');
           writeFileSync(filePath, sourceCode, 'utf8');
 
-          const run = await runProcess('python3', ['solution.py'], tempDir, stdin ?? '', timeoutMs);
+          const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+          const run = await runProcess(pythonCommand, ['solution.py'], tempDir, stdin ?? '', timeoutMs);
           return this.evaluateResult(token, run, expectedOutput);
         }
 

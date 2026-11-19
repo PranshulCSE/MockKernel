@@ -14,9 +14,18 @@ import {
   Lock,
   FileCode,
 } from 'lucide-react'
-import { assessmentsApi, type AssessmentSummary } from '../api/assessments'
+import {
+  assessmentsApi,
+  getApiErrorMessage,
+  type AssessmentSummary,
+} from '../api/assessments'
 import { Button, GlassCard, Badge } from '../components/ui'
 import { useAuthStore } from '../store/authStore'
+
+type FullscreenElement = HTMLElement & {
+  webkitRequestFullscreen?: () => Promise<void>
+  msRequestFullscreen?: () => Promise<void>
+}
 
 export default function JoinAssessmentPage() {
   const navigate = useNavigate()
@@ -41,11 +50,15 @@ export default function JoinAssessmentPage() {
 
   // Verify browser fullscreen support on mount
   useEffect(() => {
-    const docEl = document.documentElement as any
-    const supported = Boolean(
-      docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen
-    )
-    setFullscreenSupported(supported)
+    const timer = window.setTimeout(() => {
+      const docEl = document.documentElement as FullscreenElement
+      setFullscreenSupported(
+        Boolean(
+          docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen
+        )
+      )
+    }, 0)
+    return () => window.clearTimeout(timer)
   }, [])
 
   // Auto-validate if code is in URL search param
@@ -53,6 +66,8 @@ export default function JoinAssessmentPage() {
     if (initialCode.trim().length >= 4) {
       void handleValidateCode(initialCode.trim().toUpperCase())
     }
+    // handleValidateCode is a hoisted function declaration and reads current state on call.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialCode])
 
   // Stop preflight video stream when unmounting
@@ -86,7 +101,7 @@ export default function JoinAssessmentPage() {
   }
 
   // Validate assessment code
-  const handleValidateCode = async (codeToVerify?: string) => {
+  async function handleValidateCode(codeToVerify?: string) {
     const targetCode = (codeToVerify || code).trim().toUpperCase()
     if (!targetCode) {
       setError('Please enter a valid assessment code.')
@@ -100,9 +115,8 @@ export default function JoinAssessmentPage() {
       setAssessment(data)
       // Automatically trigger camera test when assessment is loaded
       void runCameraCheck()
-    } catch (err: any) {
-      const msg = err?.response?.data?.error?.message || err?.message || 'Assessment not found.'
-      setError(msg)
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Assessment not found.'))
       setAssessment(null)
     } finally {
       setLoading(false)
@@ -121,7 +135,7 @@ export default function JoinAssessmentPage() {
 
     // Try requesting fullscreen immediately on user click
     try {
-      const docEl = document.documentElement as any
+      const docEl = document.documentElement as FullscreenElement
       if (docEl.requestFullscreen) {
         await docEl.requestFullscreen()
       } else if (docEl.webkitRequestFullscreen) {

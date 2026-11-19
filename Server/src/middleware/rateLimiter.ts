@@ -1,6 +1,6 @@
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import type { Redis } from 'ioredis';
-import { getRedisClient } from '../config/redis.js';
+import { getRedisClient, isRedisEnabled } from '../config/redis.js';
 import { HttpError } from '../utils/http.js';
 import type { AuthenticatedRequest } from './auth.js';
 
@@ -235,7 +235,7 @@ export function rateLimit(
 
     const handleRedisUnavailable = (reason: unknown) => {
       const msg = reason instanceof Error ? reason.message : String(reason);
-      if (process.env.NODE_ENV !== 'test') {
+      if (process.env.NODE_ENV !== 'test' && isRedisEnabled()) {
         console.warn(`[RateLimiter] Redis unavailable (${group}): ${msg}`);
       }
       if (failOpen) {

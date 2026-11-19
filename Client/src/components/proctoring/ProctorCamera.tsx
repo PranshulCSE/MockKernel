@@ -86,13 +86,19 @@ export function ProctorCamera({
 
   // Initial mount: start camera if active
   useEffect(() => {
-    if (isActive) {
-      void startCamera()
-    } else {
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      if (!cancelled && isActive) {
+        void startCamera()
+      }
+    }, 0)
+    if (!isActive) {
       stopCamera()
     }
 
     return () => {
+      cancelled = true
+      window.clearTimeout(timer)
       stopCamera()
     }
   }, [isActive, startCamera, stopCamera])
