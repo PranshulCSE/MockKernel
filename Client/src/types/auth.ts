@@ -5,6 +5,7 @@ export interface AuthUser {
   name: string
   email: string
   role: UserRole
+  emailVerified: boolean
 }
 
 export interface AuthResponse {

@@ -11,6 +11,9 @@ export interface IUser {
   email: string;
   passwordHash?: string;
   googleId?: string;
+  emailVerified: boolean;
+  emailVerificationCodeHash?: string;
+  emailVerificationExpiresAt?: Date;
   role: UserRole;
   createdAt: Date;
   updatedAt: Date;
@@ -36,6 +39,9 @@ const userSchema = new Schema<IUser>(
       match: [EMAIL_REGEX, 'Invalid email address format'],
     },
     passwordHash: { type: String, select: false },
+    emailVerified: { type: Boolean, default: false },
+    emailVerificationCodeHash: { type: String, select: false },
+    emailVerificationExpiresAt: { type: Date, select: false },
     googleId: { type: String },
     role: { type: String, enum: USER_ROLES, required: true, default: 'user' },
   },

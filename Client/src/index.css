@@ -7,8 +7,20 @@
 @tailwind utilities;
 
 @layer base {
-  html {
+  :root {
+    color-scheme: light;
+    --color-base: 248 250 252;
+    --color-ink: 15 23 42;
+    --color-muted: 71 85 105;
+  }
+  :root.dark {
     color-scheme: dark;
+    --color-base: 7 7 15;
+    --color-ink: 245 245 255;
+    --color-muted: 156 163 199;
+  }
+  html {
+    color-scheme: light;
   }
   body {
     @apply bg-base font-sans text-ink antialiased;

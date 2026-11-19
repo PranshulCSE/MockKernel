@@ -281,6 +281,15 @@ export const assessmentsApi = {
     return res.data
   },
 
+  update: async (id: string, payload: Partial<Pick<CreateAssessmentPayload, 'title' | 'description' | 'code' | 'durationMinutes' | 'startTime' | 'endTime'>>): Promise<AdminAssessmentItem> => {
+    const res = await client.patch<{ data: AdminAssessmentItem }>(`/api/admin/assessments/${id}`, payload)
+    return res.data
+  },
+
+  remove: async (id: string): Promise<void> => {
+    await client.delete(`/api/admin/assessments/${id}`)
+  },
+
   // Admin: View report
   getReport: async (assessmentId: string): Promise<AssessmentReportData> => {
     const res = await client.get<{ data: AssessmentReportData }>(

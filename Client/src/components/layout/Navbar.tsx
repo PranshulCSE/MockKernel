@@ -3,7 +3,6 @@ import { Link, NavLink, useNavigate } from 'react-router'
 import {
   LogOut,
   Shield,
-  LayoutDashboard,
   Terminal,
   Trophy,
   Mic,
@@ -15,6 +14,7 @@ import { useAuthStore } from '../../store/authStore'
 import { cn } from '../../lib/cn'
 import { Button, Badge } from '../ui'
 import { Logo } from './Logo'
+import { ThemeToggle } from './ThemeToggle'
 
 export function Navbar() {
   const user = useAuthStore((s) => s.user)
@@ -34,7 +34,6 @@ export function Navbar() {
     { to: '/contests', label: 'Contests', icon: Trophy },
     { to: '/assessments/join', label: 'Join Assessment', icon: ShieldCheck },
     { to: '/interview', label: 'Mock Interview', icon: Mic },
-    ...(user ? [{ to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard }] : []),
     ...(isAdmin ? [{ to: '/admin', label: 'Admin Suite', icon: Shield }] : []),
   ]
 
@@ -52,7 +51,7 @@ export function Navbar() {
           </Link>
 
           {/* Desktop Navigation Links */}
-          <ul className="hidden lg:flex items-center gap-1">
+          <ul className="hidden xl:flex items-center gap-1">
             {navLinks.map((l) => (
               <li key={l.to}>
                 <NavLink
@@ -75,7 +74,8 @@ export function Navbar() {
         </div>
 
         {/* Right Desktop User & Auth Area */}
-        <div className="hidden lg:flex items-center gap-3">
+        <div className="hidden xl:flex items-center gap-3">
+          <ThemeToggle />
           {user ? (
             <div className="flex items-center gap-3">
               {isAdmin && (
@@ -126,7 +126,8 @@ export function Navbar() {
         </div>
 
         {/* Mobile Hamburger Toggle Button */}
-        <div className="flex lg:hidden items-center gap-2">
+        <div className="flex xl:hidden items-center gap-2">
+          <ThemeToggle />
           {user && (
             <Link
               to="/dashboard"
@@ -153,7 +154,7 @@ export function Navbar() {
 
       {/* Mobile Collapsible Dropdown Menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden max-h-[calc(100vh-4rem)] overflow-y-auto border-b border-white/10 bg-base/95 backdrop-blur-2xl px-4 py-5 animate-fadeIn">
+        <div className="xl:hidden max-h-[calc(100vh-4rem)] overflow-y-auto border-b border-white/10 bg-base/95 backdrop-blur-2xl px-4 py-5 animate-fadeIn">
           <div className="flex flex-col gap-4">
             {/* User status banner if logged in */}
             {user && (

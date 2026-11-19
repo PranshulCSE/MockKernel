@@ -10,14 +10,25 @@ import {
   Calendar,
   Sparkles,
   ExternalLink,
+  UserRound,
+  MailCheck,
 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { GlassCard, Button, Badge, VerdictBadge, Skeleton, EmptyState } from '../components/ui'
 import { listUserSubmissions, type SubmissionItem } from '../api/submissions'
 import { listInterviews, type InterviewSession } from '../api/interviews'
+import { updateAccount, requestEmailVerification, confirmEmailVerification } from '../api/auth'
+import { Input } from '../components/ui/Input'
 
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user)
+  const setUser = useAuthStore((s) => s.setUser)
+  const [profileName, setProfileName] = useState(user?.name || '')
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [verificationCode, setVerificationCode] = useState('')
+  const [accountMessage, setAccountMessage] = useState('')
+  const [accountBusy, setAccountBusy] = useState(false)
 
   const [submissions, setSubmissions] = useState<SubmissionItem[]>([])
   const [interviews, setInterviews] = useState<InterviewSession[]>([])
@@ -114,6 +125,56 @@ export default function DashboardPage() {
             </Link>
           </div>
         </div>
+      </GlassCard>
+
+      <GlassCard className="p-5 sm:p-6">
+        <div className="mb-5 flex items-center gap-3 border-b border-white/10 pb-4">
+          <UserRound className="size-5 text-cyan" />
+          <div>
+            <h2 className="font-display text-lg font-bold text-ink">Account settings</h2>
+            <p className="text-xs text-muted">Update your profile, password, and email verification.</p>
+          </div>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <form className="space-y-3" onSubmit={async (event) => {
+            event.preventDefault(); setAccountBusy(true); setAccountMessage('')
+            try { const next = await updateAccount({ name: profileName }); setUser(next); setAccountMessage('Profile updated.') }
+            catch (error) { setAccountMessage(error instanceof Error ? error.message : 'Could not update profile.') }
+            finally { setAccountBusy(false) }
+          }}>
+            <Input label="Display name" value={profileName} onChange={(event) => setProfileName(event.target.value)} autoComplete="name" />
+            <Button type="submit" size="sm" loading={accountBusy}>Save profile</Button>
+          </form>
+          <form className="space-y-3" onSubmit={async (event) => {
+            event.preventDefault(); setAccountBusy(true); setAccountMessage('')
+            try { await updateAccount({ currentPassword, newPassword }); setCurrentPassword(''); setNewPassword(''); setAccountMessage('Password updated.') }
+            catch (error) { setAccountMessage(error instanceof Error ? error.message : 'Could not update password.') }
+            finally { setAccountBusy(false) }
+          }}>
+            <Input label="Current password" type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
+            <Input label="New password" type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
+            <Button type="submit" size="sm" loading={accountBusy} disabled={!currentPassword || newPassword.length < 8}>Update password</Button>
+          </form>
+        </div>
+        <div className="mt-6 flex flex-wrap items-end gap-3 border-t border-white/10 pt-5">
+          <div className="mr-auto text-sm text-muted">{user?.email} · {user?.emailVerified ? 'Verified' : 'Not verified'}</div>
+          {!user?.emailVerified && <>
+            <Button size="sm" variant="secondary" leftIcon={<MailCheck className="size-4" />} disabled={accountBusy} onClick={async () => {
+              setAccountBusy(true); setAccountMessage('')
+              try { await requestEmailVerification(); setAccountMessage('Verification code sent to your email.') }
+              catch (error) { setAccountMessage(error instanceof Error ? error.message : 'Could not send verification code.') }
+              finally { setAccountBusy(false) }
+            }}>Send verification code</Button>
+            <Input label="Email code" value={verificationCode} onChange={(event) => setVerificationCode(event.target.value)} inputMode="numeric" maxLength={6} className="w-36" />
+            <Button size="sm" disabled={verificationCode.length !== 6 || accountBusy} onClick={async () => {
+              setAccountBusy(true); setAccountMessage('')
+              try { await confirmEmailVerification(verificationCode); const next = await useAuthStore.getState().hydrate(); void next; setAccountMessage('Email verified.') }
+              catch (error) { setAccountMessage(error instanceof Error ? error.message : 'Could not verify email.') }
+              finally { setAccountBusy(false) }
+            }}>Verify</Button>
+          </>}
+        </div>
+        {accountMessage && <p role="status" className="mt-3 text-xs text-cyan">{accountMessage}</p>}
       </GlassCard>
 
       {/* KPI Tiles */}
