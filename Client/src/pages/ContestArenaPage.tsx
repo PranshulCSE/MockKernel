@@ -36,6 +36,7 @@ import { useSocket } from '../hooks/useSocket'
 import type { Verdict } from '../types/verdict'
 import type { VerdictUpdatePayload, TestCaseResult } from '../types/socket'
 import { cn } from '../lib/cn'
+import { useThemeStore } from '../store/themeStore'
 
 const LANGUAGES = [
   { id: 'python', name: 'Python 3', monaco: 'python' },
@@ -52,6 +53,7 @@ const DEFAULT_STARTER_CODES: Record<string, string> = {
 }
 
 export default function ContestArenaPage() {
+  const theme = useThemeStore((state) => state.theme)
   const { id: contestId } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { joinContest, leaveContest, trackSubmission } = useSocket()
@@ -377,6 +379,25 @@ Input and Output formats follow standard competitive programming conventions.`,
         'editor.lineHighlightBackground': '#ffffff08',
       },
     })
+    monaco.editor.defineTheme('mockkernel-light', {
+      base: 'vs',
+      inherit: true,
+      rules: [
+        { token: 'comment', foreground: '64748B', fontStyle: 'italic' },
+        { token: 'keyword', foreground: '0369A1' },
+        { token: 'string', foreground: '047857' },
+        { token: 'number', foreground: 'BE185D' },
+      ],
+      colors: {
+        'editor.background': '#F8FAFD',
+        'editor.foreground': '#1E293B',
+        'editorLineNumber.foreground': '#64748B99',
+        'editorLineNumber.activeForeground': '#0284C7',
+        'editor.lineHighlightBackground': '#0F172A0A',
+        'editorCursor.foreground': '#0284C7',
+        'editor.selectionBackground': '#0EA5E933',
+      },
+    })
   }
 
   const copyToClipboard = (text: string, index: number) => {
@@ -408,7 +429,7 @@ Input and Output formats follow standard competitive programming conventions.`,
 
   // Left panel problem statement
   const leftPanelContent = (
-    <div className="flex h-full flex-col overflow-hidden border-r border-white/10 bg-[#07070F]/80">
+    <div className="workspace-panel flex h-full flex-col overflow-hidden border-r border-line">
       <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-2.5">
         <span className="text-xs font-mono text-cyan uppercase tracking-wider font-semibold">
           Problem {String.fromCharCode(65 + activeProblemIndex)}: {activeProblemRef?.points ?? 100} Points
@@ -501,7 +522,7 @@ Input and Output formats follow standard competitive programming conventions.`,
 
   // Right Panel: Editor Header
   const editorHeader = (
-    <div className="flex shrink-0 items-center justify-between border-b border-white/10 bg-[#161B22]/90 px-4 py-2">
+    <div className="workspace-toolbar flex shrink-0 items-center justify-between border-b border-line px-4 py-2">
       <div className="flex items-center gap-3">
         <select
           value={language}
@@ -509,7 +530,7 @@ Input and Output formats follow standard competitive programming conventions.`,
           className="rounded-ctl border border-white/10 bg-white/5 px-3 py-1 text-xs font-mono text-ink focus-visible:border-cyan focus-visible:outline-none"
         >
           {LANGUAGES.map((l) => (
-            <option key={l.id} value={l.id} className="bg-[#161B22] text-ink">
+            <option key={l.id} value={l.id} className="bg-base text-ink">
               {l.name}
             </option>
           ))}
@@ -571,8 +592,8 @@ Input and Output formats follow standard competitive programming conventions.`,
 
   // Console output pane
   const bottomConsole = (
-    <div className="flex h-full flex-col overflow-hidden bg-[#0A0D14]">
-      <div className="flex shrink-0 items-center justify-between border-y border-white/10 bg-[#10141D] px-4 py-2">
+    <div className="workspace-console flex h-full flex-col overflow-hidden">
+      <div className="workspace-console-head flex shrink-0 items-center justify-between border-y border-line px-4 py-2">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setConsoleTab('testcases')}
@@ -667,7 +688,7 @@ Input and Output formats follow standard competitive programming conventions.`,
   )
 
   const rightPanelContent = (
-    <div className="flex h-full flex-col overflow-hidden bg-[#161B22]">
+    <div className="workspace-editor flex h-full flex-col overflow-hidden">
       {editorHeader}
       <div className="flex-1 overflow-hidden">
         <ResizablePanels
@@ -681,7 +702,7 @@ Input and Output formats follow standard competitive programming conventions.`,
                 value={code}
                 onChange={handleCodeChange}
                 beforeMount={handleEditorWillMount}
-                theme="mockkernel-dark"
+                theme={theme === 'light' ? 'mockkernel-light' : 'mockkernel-dark'}
                 options={{
                   fontSize: 14,
                   fontFamily: '"JetBrains Mono Variable", monospace',
@@ -768,7 +789,7 @@ Input and Output formats follow standard competitive programming conventions.`,
       </header>
 
       {/* Mobile Tab Switcher (< lg) */}
-      <div className="flex lg:hidden items-center justify-between border-b border-white/10 bg-[#0E131F] px-3 py-2 shrink-0">
+      <div className="workspace-console-head flex lg:hidden items-center justify-between border-b border-line px-3 py-2 shrink-0">
         <div className="flex items-center gap-1.5" role="tablist">
           <button
             onClick={() => setMobileTab('problem')}
@@ -839,7 +860,7 @@ Input and Output formats follow standard competitive programming conventions.`,
           <div className="h-full overflow-y-auto">{leftPanelContent}</div>
         )}
         {mobileTab === 'code' && (
-          <div className="flex h-full flex-col overflow-hidden bg-[#161B22]">
+          <div className="workspace-editor flex h-full flex-col overflow-hidden">
             {editorHeader}
             <div className="flex-1 overflow-hidden">
               <Editor
@@ -848,7 +869,7 @@ Input and Output formats follow standard competitive programming conventions.`,
                 value={code}
                 onChange={handleCodeChange}
                 beforeMount={handleEditorWillMount}
-                theme="mockkernel-dark"
+                theme={theme === 'light' ? 'mockkernel-light' : 'mockkernel-dark'}
                 options={{
                   fontSize: 13,
                   fontFamily: '"JetBrains Mono Variable", monospace',

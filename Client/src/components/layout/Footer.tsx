@@ -24,9 +24,9 @@ export function Footer() {
   const currentYear = new Date().getFullYear()
 
   return (
-    <footer className="mt-auto border-t border-white/10 bg-[#090C13] text-sm text-muted">
+    <footer className="mt-auto border-t border-line bg-base text-sm text-muted">
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-        <div className="grid grid-cols-3 gap-x-4 gap-y-8 lg:grid-cols-5 lg:gap-10">
+        <div className="flex flex-col gap-3">
           {/* Brand */}
           <div className="col-span-3 flex flex-col gap-3 lg:col-span-2">
             <Link to="/" className="inline-flex w-fit shrink-0" aria-label="MockKernel home">
@@ -36,14 +36,15 @@ export function Footer() {
               Solve coding problems, compete in live contests, and practice explaining your
               thinking with AI mock interviews.
             </p>
-            <span className="hidden w-fit items-center gap-2 rounded-full border border-cyan/25 bg-cyan/10 px-3 py-1 text-[11px] font-mono text-cyan sm:inline-flex">
+            <p className="text-xs">© {currentYear} MockKernel</p>
+            <span className="hidden w-fit items-center gap-2 rounded-full border border-cyan/25 bg-cyan/10 px-3 py-1 text-[11px] font-mono text-cyan">
               <Terminal className="size-3.5" aria-hidden />
               Practice. Compete. Explain.
             </span>
           </div>
 
           {/* Practice */}
-          <div className="flex min-w-0 flex-col gap-2.5">
+          <div className="hidden min-w-0 flex-col gap-2.5">
             <h2 className="flex items-center gap-1.5 text-[11px] font-mono font-semibold uppercase tracking-wider text-ink sm:text-xs">
               <Terminal className="size-3.5 shrink-0 text-cyan" aria-hidden />
               Practice
@@ -60,7 +61,7 @@ export function Footer() {
           </div>
 
           {/* Contests */}
-          <div className="flex min-w-0 flex-col gap-2.5">
+          <div className="hidden min-w-0 flex-col gap-2.5">
             <h2 className="flex items-center gap-1.5 text-[11px] font-mono font-semibold uppercase tracking-wider text-ink sm:text-xs">
               <Trophy className="size-3.5 shrink-0 text-cyan" aria-hidden />
               Contests
@@ -77,7 +78,7 @@ export function Footer() {
           </div>
 
           {/* Interview */}
-          <div className="flex min-w-0 flex-col gap-2.5">
+          <div className="hidden min-w-0 flex-col gap-2.5">
             <h2 className="flex items-center gap-1.5 text-[11px] font-mono font-semibold uppercase tracking-wider text-ink sm:text-xs">
               <Mic className="size-3.5 shrink-0 text-cyan" aria-hidden />
               Interview
@@ -95,7 +96,7 @@ export function Footer() {
         </div>
       </div>
 
-      <div className="border-t border-white/5 bg-black/30 py-4">
+      <div className="hidden border-t border-line bg-surface-soft py-4">
         <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-2.5 px-4 text-center text-[10px] text-muted sm:flex-row sm:px-6 sm:text-left sm:text-[11px] lg:px-8">
           <p>© {currentYear} MockKernel. All rights reserved.</p>
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5">
