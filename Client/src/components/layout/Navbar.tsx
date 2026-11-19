@@ -38,7 +38,7 @@ export function Navbar() {
   ]
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-base/85 backdrop-blur-xl transition-all">
+    <header className="sticky top-0 z-40 border-b border-line bg-base/90 shadow-sm backdrop-blur-xl transition-all">
       <nav aria-label="Main" className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-6 lg:gap-8">
           <Link
@@ -86,7 +86,7 @@ export function Navbar() {
               )}
               <Link
                 to="/dashboard"
-                className="flex items-center gap-2.5 rounded-full py-1 px-2 hover:bg-white/5 transition-colors"
+                className="flex items-center gap-2.5 rounded-full py-1 px-2 hover:bg-surface-soft transition-colors"
               >
                 <span
                   className="grid size-8 place-items-center rounded-full bg-cyan/20 border border-cyan/40 text-xs font-bold text-cyan shadow-glow-cyan"
@@ -145,7 +145,7 @@ export function Navbar() {
             onClick={() => setMobileMenuOpen((prev) => !prev)}
             aria-label="Toggle navigation menu"
             aria-expanded={mobileMenuOpen}
-            className="flex size-9 items-center justify-center rounded-ctl border border-white/10 bg-white/5 text-ink hover:bg-white/10 transition-colors"
+            className="flex size-9 items-center justify-center rounded-ctl border border-line bg-surface-soft text-ink hover:bg-cyan/10 transition-colors"
           >
             {mobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>

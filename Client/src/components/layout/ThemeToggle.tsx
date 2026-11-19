@@ -17,7 +17,7 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
       title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
       className={cn(
         'relative inline-flex size-9 items-center justify-center rounded-full border transition-all duration-200',
-        'border-white/10 bg-white/5 text-muted hover:text-ink hover:bg-white/10 hover:border-white/20',
+        'border-line bg-surface-soft text-muted hover:text-ink hover:bg-cyan/10 hover:border-cyan/30',
         className
       )}
     >

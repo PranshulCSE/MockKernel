@@ -9,6 +9,7 @@ import {
   Calendar,
   Eye,
   Check,
+  Pencil,
 } from 'lucide-react'
 import {
   Button,
@@ -22,7 +23,9 @@ import {
 } from '../../components/ui'
 import {
   listAdminContests,
+  getAdminContest,
   createAdminContest,
+  updateAdminContest,
   startAdminContest,
   endAdminContest,
   rebuildAdminLeaderboard,
@@ -42,6 +45,7 @@ export default function AdminContestsPage() {
 
   // Drawer state
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [editingContestId, setEditingContestId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [availableProblems, setAvailableProblems] = useState<AdminProblemItem[]>([])
 
@@ -83,6 +87,7 @@ export default function AdminContestsPage() {
   }, [page, loadContests])
 
   const openCreateDrawer = async () => {
+    setEditingContestId(null)
     setFormTitle('')
     setFormDescription('')
     const now = new Date()
@@ -102,6 +107,33 @@ export default function AdminContestsPage() {
     }
   }
 
+  const openEditDrawer = async (contest: AdminContestItem) => {
+    if (contest.status !== 'draft') return
+    try {
+      const [detail, pRes] = await Promise.all([
+        getAdminContest(contest.id),
+        listAdminProblems({ limit: 50, isPublished: true }),
+      ])
+      const toLocal = (value: string) => {
+        const date = new Date(value)
+        return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
+      }
+      setEditingContestId(contest.id)
+      setFormTitle(detail.title)
+      setFormDescription(detail.description || '')
+      setFormStartTime(toLocal(detail.startTime))
+      setFormEndTime(toLocal(detail.endTime))
+      setSelectedProblems((detail.problems || []).map((entry) => ({
+        problemId: typeof entry.problem === 'string' ? entry.problem : entry.problem.id,
+        points: entry.points,
+      })))
+      setAvailableProblems(pRes.data || [])
+      setIsDrawerOpen(true)
+    } catch {
+      toast.error('Could not load contest details for editing.')
+    }
+  }
+
   const toggleProblemSelection = (pId: string) => {
     setSelectedProblems((prev) => {
       const exists = prev.find((item) => item.problemId === pId)
@@ -118,7 +150,7 @@ export default function AdminContestsPage() {
     )
   }
 
-  const handleCreateContest = async () => {
+  const handleSaveContest = async () => {
     if (!formTitle.trim()) {
       toast.warn('Contest title is required.')
       return
@@ -138,7 +170,7 @@ export default function AdminContestsPage() {
 
     setIsSaving(true)
     try {
-      await createAdminContest({
+      const payload = {
         title: formTitle.trim(),
         description: formDescription.trim(),
         startTime: new Date(formStartTime).toISOString(),
@@ -147,9 +179,15 @@ export default function AdminContestsPage() {
           problem: p.problemId,
           points: p.points,
         })),
-      })
+      }
+      if (editingContestId) {
+        await updateAdminContest(editingContestId, payload)
+        toast.success('Contest updated successfully.', 'Updated')
+      } else {
+        await createAdminContest(payload)
+        toast.success('Contest created successfully.', 'Created')
+      }
 
-      toast.success('Contest created successfully.', 'Created')
       setIsDrawerOpen(false)
       void loadContests(page)
     } catch (err: unknown) {
@@ -256,6 +294,17 @@ export default function AdminContestsPage() {
           <div className="flex flex-wrap items-center justify-end gap-2">
             {row.status === 'draft' && (
               <Button
+                variant="ghost"
+                size="sm"
+                leftIcon={<Pencil className="size-3.5" />}
+                onClick={() => void openEditDrawer(row)}
+              >
+                Edit
+              </Button>
+            )}
+
+            {row.status === 'draft' && (
+              <Button
                 variant="primary"
                 size="sm"
                 loading={isBusy}
@@ -354,8 +403,8 @@ export default function AdminContestsPage() {
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         width="lg"
-        title="Create New Contest"
-        description="Set contest duration, choose problems, and assign point weightings."
+        title={editingContestId ? 'Edit Contest' : 'Create New Contest'}
+        description="Set contest duration, choose problems, and assign point weightings. Only draft contests can be edited."
         footer={
           <>
             <Button variant="ghost" onClick={() => setIsDrawerOpen(false)}>
@@ -365,9 +414,9 @@ export default function AdminContestsPage() {
               variant="primary"
               loading={isSaving}
               leftIcon={<Check className="size-4" />}
-              onClick={handleCreateContest}
+              onClick={handleSaveContest}
             >
-              Save Draft Contest
+              {editingContestId ? 'Save Contest Changes' : 'Save Draft Contest'}
             </Button>
           </>
         }

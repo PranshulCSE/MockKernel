@@ -19,6 +19,7 @@ import { listUserSubmissions, type SubmissionItem } from '../api/submissions'
 import { listInterviews, type InterviewSession } from '../api/interviews'
 import { updateAccount, requestEmailVerification, confirmEmailVerification } from '../api/auth'
 import { Input } from '../components/ui/Input'
+import { getMyStats, type UserStats } from '../api/users'
 
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user)
@@ -33,15 +34,17 @@ export default function DashboardPage() {
   const [submissions, setSubmissions] = useState<SubmissionItem[]>([])
   const [interviews, setInterviews] = useState<InterviewSession[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [stats, setStats] = useState<UserStats | null>(null)
 
   useEffect(() => {
     let isMounted = true
 
     const fetchDashboardData = async () => {
       try {
-        const [subRes, intRes] = await Promise.allSettled([
+        const [subRes, intRes, statsRes] = await Promise.allSettled([
           listUserSubmissions({ limit: 20 }),
           listInterviews({ limit: 10 }),
+          getMyStats(),
         ])
 
         if (!isMounted) return
@@ -52,6 +55,7 @@ export default function DashboardPage() {
         if (intRes.status === 'fulfilled') {
           setInterviews(intRes.value.data || [])
         }
+        if (statsRes.status === 'fulfilled') setStats(statsRes.value)
       } catch {
         // Handled silently
       } finally {
@@ -67,19 +71,14 @@ export default function DashboardPage() {
   }, [])
 
   // KPI Calculations
-  const acceptedSubmissions = submissions.filter((s) => s.verdict === 'ACCEPTED')
-  const solvedCount = new Set(
-    acceptedSubmissions.map((s) =>
-      typeof s.problem === 'object' && s.problem ? s.problem.id : String(s.problem),
-    ),
-  ).size
-  const totalSubmissions = submissions.length
+  const solvedCount = stats?.solvedProblems ?? 0
+  const totalSubmissions = stats?.totalSubmissions ?? 0
   const acceptanceRate =
     totalSubmissions > 0
-      ? `${((acceptedSubmissions.length / totalSubmissions) * 100).toFixed(0)}%`
+      ? `${(((stats?.acceptedSubmissions ?? 0) / totalSubmissions) * 100).toFixed(0)}%`
       : '0%'
-  const completedInterviews = interviews.filter((i) => i.status === 'completed')
-  const contestsCount = new Set(submissions.filter((s) => Boolean(s.contest)).map((s) => s.contest)).size
+  const completedInterviewsCount = stats?.interviewsCompleted ?? 0
+  const contestsCount = stats?.contestsJoined ?? 0
 
   return (
     <div className="flex flex-col gap-10 max-w-6xl mx-auto pb-20">
@@ -225,7 +224,7 @@ export default function DashboardPage() {
               <Skeleton className="h-8 w-16" />
             ) : (
               <span className="font-display text-3xl font-extrabold text-ink">
-                {completedInterviews.length}
+                {completedInterviewsCount}
               </span>
             )}
             <p className="mt-1 font-sans text-xs text-muted">Evaluated speaking sessions</p>
@@ -245,7 +244,7 @@ export default function DashboardPage() {
             ) : (
               <span className="font-display text-3xl font-extrabold text-ink">{acceptanceRate}</span>
             )}
-            <p className="mt-1 font-sans text-xs text-muted">{acceptedSubmissions.length} of {totalSubmissions} runs</p>
+            <p className="mt-1 font-sans text-xs text-muted">{stats?.acceptedSubmissions ?? 0} of {totalSubmissions} runs</p>
           </div>
         </GlassCard>
       </div>
