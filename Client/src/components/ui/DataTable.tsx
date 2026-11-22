@@ -140,11 +140,11 @@ export function DataTable<T extends Record<string, unknown>>({
   return (
     <div
       className={cn(
-        'w-full overflow-hidden rounded-card border border-white/10 bg-white/5 backdrop-blur-xl shadow-lg',
+        'w-full min-w-0 max-w-full overflow-hidden rounded-card border border-white/10 bg-white/5 backdrop-blur-xl shadow-lg',
         className,
       )}
     >
-      <div className="overflow-x-auto">
+      <div className="w-full min-w-0 overflow-x-auto">
         <table className="w-full border-collapse text-left font-sans text-sm">
           <thead>
             <tr className="border-b border-white/10 bg-white/[0.03]">

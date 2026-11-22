@@ -36,6 +36,7 @@ import { useSocket } from '../hooks/useSocket'
 import type { Verdict } from '../types/verdict'
 import type { VerdictUpdatePayload, TestCaseResult } from '../types/socket'
 import { cn } from '../lib/cn'
+import { useThemeStore } from '../store/themeStore'
 
 const LANGUAGES = [
   { id: 'python', name: 'Python 3', monaco: 'python' },
@@ -52,6 +53,7 @@ const DEFAULT_STARTER_CODES: Record<string, string> = {
 }
 
 export default function ContestArenaPage() {
+  const theme = useThemeStore((state) => state.theme)
   const { id: contestId } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { joinContest, leaveContest, trackSubmission } = useSocket()
@@ -139,22 +141,30 @@ export default function ContestArenaPage() {
           participantCount: 88,
           problems: [
             {
-              problem: { id: 'two-sum', title: 'Two Sum', difficulty: 'Easy' },
+              problemId: 'two-sum',
+              title: 'Two Sum',
+              difficulty: 'Easy',
               points: 100,
               order: 0,
             },
             {
-              problem: { id: 'valid-parentheses', title: 'Valid Parentheses', difficulty: 'Easy' },
+              problemId: 'valid-parentheses',
+              title: 'Valid Parentheses',
+              difficulty: 'Easy',
               points: 200,
               order: 1,
             },
             {
-              problem: { id: 'lru-cache', title: 'LRU Cache', difficulty: 'Medium' },
+              problemId: 'lru-cache',
+              title: 'LRU Cache',
+              difficulty: 'Medium',
               points: 300,
               order: 2,
             },
             {
-              problem: { id: 'merge-k-lists', title: 'Merge k Sorted Lists', difficulty: 'Hard' },
+              problemId: 'merge-k-lists',
+              title: 'Merge k Sorted Lists',
+              difficulty: 'Hard',
               points: 400,
               order: 3,
             },
@@ -173,28 +183,36 @@ export default function ContestArenaPage() {
   }, [contestId])
 
   // Load active problem details
-  const activeProblemRef: ContestProblemRef | undefined = contest?.problems?.[activeProblemIndex]
+  const activeProblemRef: ContestProblemRef | undefined =
+    contest?.problems?.[activeProblemIndex]
+  const activePid = activeProblemRef?.problemId || ''
+  const activeTitle =
+    activeProblemRef?.title ||
+    `Problem ${String.fromCharCode(65 + activeProblemIndex)}`
+  const activeDifficulty = activeProblemRef?.difficulty || 'Medium'
 
   useEffect(() => {
-    if (!activeProblemRef?.problem?.id) return
-    const pid = activeProblemRef.problem.id
+    if (!activePid) return
 
     let cancelled = false
 
     const loadProblem = async () => {
       setLoadingProblem(true)
       try {
-        const p = await getProblemById(pid)
+        const p = await getProblemById(activePid)
         if (!cancelled) setCurrentProblem(p)
       } catch {
         if (cancelled) return
         // Fallback problem data
         setCurrentProblem({
-          id: pid,
-          title: activeProblemRef.problem.title,
-          difficulty: activeProblemRef.problem.difficulty,
-          supportedLanguages: ['python', 'cpp', 'java', 'javascript'],
-          statement: `Solve the problem "${activeProblemRef.problem.title}" within the contest constraints.
+          id: activePid,
+          title: activeTitle,
+          difficulty: (activeDifficulty as 'Easy' | 'Medium' | 'Hard') || 'Medium',
+          supportedLanguages:
+            activeProblemRef?.supportedLanguages?.length
+              ? activeProblemRef.supportedLanguages
+              : ['python', 'cpp', 'java', 'javascript'],
+          statement: `Solve the problem "${activeTitle}" within the contest constraints.
 
 Input and Output formats follow standard competitive programming conventions.`,
           constraints: '1 <= N <= 10^5\nTime limit: 2.0s\nMemory limit: 256MB',
@@ -219,13 +237,12 @@ Input and Output formats follow standard competitive programming conventions.`,
     return () => {
       cancelled = true
     }
-  }, [activeProblemRef?.problem?.id, activeProblemRef?.problem?.title, activeProblemRef?.problem?.difficulty])
+  }, [activePid, activeTitle, activeDifficulty, activeProblemRef?.supportedLanguages])
 
   // Draft loading per problem in contest
   useEffect(() => {
-    if (!activeProblemRef?.problem?.id || !contestId) return
-    const pid = activeProblemRef.problem.id
-    const draftKey = `mk_contest_${contestId}_${pid}_${language}`
+    if (!activePid || !contestId) return
+    const draftKey = `mk_contest_${contestId}_${activePid}_${language}`
     const saved = localStorage.getItem(draftKey)
 
     const defaultCode =
@@ -244,14 +261,13 @@ Input and Output formats follow standard competitive programming conventions.`,
     }
 
     applyDraft()
-  }, [contestId, activeProblemRef?.problem?.id, language, currentProblem])
+  }, [contestId, activePid, language, currentProblem])
 
   const handleCodeChange = (newVal: string | undefined) => {
     const text = newVal ?? ''
     setCode(text)
-    if (!activeProblemRef?.problem?.id || !contestId) return
-    const pid = activeProblemRef.problem.id
-    const draftKey = `mk_contest_${contestId}_${pid}_${language}`
+    if (!activePid || !contestId) return
+    const draftKey = `mk_contest_${contestId}_${activePid}_${language}`
     localStorage.setItem(draftKey, text)
     setIsDirty(true)
   }
@@ -265,8 +281,7 @@ Input and Output formats follow standard competitive programming conventions.`,
 
   // Run / Submit handler scoped to contestId
   const handleExecute = async (mode: 'run' | 'submit') => {
-    if (!activeProblemRef?.problem?.id || !contestId || cooldownSeconds > 0) return
-    const pid = activeProblemRef.problem.id
+    if (!activePid || !contestId || cooldownSeconds > 0) return
 
     setConsoleTab('output')
     setExecutionState({
@@ -280,7 +295,7 @@ Input and Output formats follow standard competitive programming conventions.`,
 
     try {
       const payload = {
-        problemId: pid,
+        problemId: activePid,
         language,
         sourceCode: code,
         contestId,
@@ -302,11 +317,11 @@ Input and Output formats follow standard competitive programming conventions.`,
 
           if (mode === 'submit') {
             if (update.verdict === 'ACCEPTED') {
-              setSolvedStatus((prev) => ({ ...prev, [pid]: 'SOLVED' }))
+              setSolvedStatus((prev) => ({ ...prev, [activePid]: 'SOLVED' }))
             } else if (update.verdict !== 'PENDING' && update.verdict !== 'RUNNING') {
               setSolvedStatus((prev) => ({
                 ...prev,
-                [pid]: prev[pid] === 'SOLVED' ? 'SOLVED' : 'ATTEMPTED',
+                [activePid]: prev[activePid] === 'SOLVED' ? 'SOLVED' : 'ATTEMPTED',
               }))
             }
           }
@@ -364,6 +379,25 @@ Input and Output formats follow standard competitive programming conventions.`,
         'editor.lineHighlightBackground': '#ffffff08',
       },
     })
+    monaco.editor.defineTheme('mockkernel-light', {
+      base: 'vs',
+      inherit: true,
+      rules: [
+        { token: 'comment', foreground: '64748B', fontStyle: 'italic' },
+        { token: 'keyword', foreground: '0369A1' },
+        { token: 'string', foreground: '047857' },
+        { token: 'number', foreground: 'BE185D' },
+      ],
+      colors: {
+        'editor.background': '#F8FAFD',
+        'editor.foreground': '#1E293B',
+        'editorLineNumber.foreground': '#64748B99',
+        'editorLineNumber.activeForeground': '#0284C7',
+        'editor.lineHighlightBackground': '#0F172A0A',
+        'editorCursor.foreground': '#0284C7',
+        'editor.selectionBackground': '#0EA5E933',
+      },
+    })
   }
 
   const copyToClipboard = (text: string, index: number) => {
@@ -395,7 +429,7 @@ Input and Output formats follow standard competitive programming conventions.`,
 
   // Left panel problem statement
   const leftPanelContent = (
-    <div className="flex h-full flex-col overflow-hidden border-r border-white/10 bg-[#07070F]/80">
+    <div className="workspace-panel flex h-full flex-col overflow-hidden border-r border-line">
       <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-2.5">
         <span className="text-xs font-mono text-cyan uppercase tracking-wider font-semibold">
           Problem {String.fromCharCode(65 + activeProblemIndex)}: {activeProblemRef?.points ?? 100} Points
@@ -488,7 +522,7 @@ Input and Output formats follow standard competitive programming conventions.`,
 
   // Right Panel: Editor Header
   const editorHeader = (
-    <div className="flex shrink-0 items-center justify-between border-b border-white/10 bg-[#161B22]/90 px-4 py-2">
+    <div className="workspace-toolbar flex shrink-0 items-center justify-between border-b border-line px-4 py-2">
       <div className="flex items-center gap-3">
         <select
           value={language}
@@ -496,7 +530,7 @@ Input and Output formats follow standard competitive programming conventions.`,
           className="rounded-ctl border border-white/10 bg-white/5 px-3 py-1 text-xs font-mono text-ink focus-visible:border-cyan focus-visible:outline-none"
         >
           {LANGUAGES.map((l) => (
-            <option key={l.id} value={l.id} className="bg-[#161B22] text-ink">
+            <option key={l.id} value={l.id} className="bg-base text-ink">
               {l.name}
             </option>
           ))}
@@ -558,8 +592,8 @@ Input and Output formats follow standard competitive programming conventions.`,
 
   // Console output pane
   const bottomConsole = (
-    <div className="flex h-full flex-col overflow-hidden bg-[#0A0D14]">
-      <div className="flex shrink-0 items-center justify-between border-y border-white/10 bg-[#10141D] px-4 py-2">
+    <div className="workspace-console flex h-full flex-col overflow-hidden">
+      <div className="workspace-console-head flex shrink-0 items-center justify-between border-y border-line px-4 py-2">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setConsoleTab('testcases')}
@@ -654,7 +688,7 @@ Input and Output formats follow standard competitive programming conventions.`,
   )
 
   const rightPanelContent = (
-    <div className="flex h-full flex-col overflow-hidden bg-[#161B22]">
+    <div className="workspace-editor flex h-full flex-col overflow-hidden">
       {editorHeader}
       <div className="flex-1 overflow-hidden">
         <ResizablePanels
@@ -668,7 +702,7 @@ Input and Output formats follow standard competitive programming conventions.`,
                 value={code}
                 onChange={handleCodeChange}
                 beforeMount={handleEditorWillMount}
-                theme="mockkernel-dark"
+                theme={theme === 'light' ? 'mockkernel-light' : 'mockkernel-dark'}
                 options={{
                   fontSize: 14,
                   fontFamily: '"JetBrains Mono Variable", monospace',
@@ -707,10 +741,10 @@ Input and Output formats follow standard competitive programming conventions.`,
         </div>
 
         {/* Center: Problem Navigation Tabs (Problem A, B, C) */}
-        <div className="flex items-center gap-1.5" role="tablist">
-          {contest.problems?.map((pRef, idx) => {
+        <div className="flex shrink-0 items-center gap-1 sm:gap-1.5" role="tablist">
+          {contest.problems?.map((pRef: ContestProblemRef, idx) => {
             const letter = String.fromCharCode(65 + idx)
-            const pid = pRef.problem.id
+            const pid = pRef.problemId || `problem-${idx}`
             const pStatus = solvedStatus[pid] || 'UNTOUCHED'
             const isSelected = activeProblemIndex === idx
 
@@ -755,7 +789,7 @@ Input and Output formats follow standard competitive programming conventions.`,
       </header>
 
       {/* Mobile Tab Switcher (< lg) */}
-      <div className="flex lg:hidden items-center justify-between border-b border-white/10 bg-[#0E131F] px-3 py-2 shrink-0">
+      <div className="workspace-console-head flex lg:hidden items-center justify-between border-b border-line px-3 py-2 shrink-0">
         <div className="flex items-center gap-1.5" role="tablist">
           <button
             onClick={() => setMobileTab('problem')}
@@ -826,7 +860,7 @@ Input and Output formats follow standard competitive programming conventions.`,
           <div className="h-full overflow-y-auto">{leftPanelContent}</div>
         )}
         {mobileTab === 'code' && (
-          <div className="flex h-full flex-col overflow-hidden bg-[#161B22]">
+          <div className="workspace-editor flex h-full flex-col overflow-hidden">
             {editorHeader}
             <div className="flex-1 overflow-hidden">
               <Editor
@@ -835,7 +869,7 @@ Input and Output formats follow standard competitive programming conventions.`,
                 value={code}
                 onChange={handleCodeChange}
                 beforeMount={handleEditorWillMount}
-                theme="mockkernel-dark"
+                theme={theme === 'light' ? 'mockkernel-light' : 'mockkernel-dark'}
                 options={{
                   fontSize: 13,
                   fontFamily: '"JetBrains Mono Variable", monospace',

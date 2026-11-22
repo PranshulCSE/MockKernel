@@ -68,9 +68,12 @@ export const useAuthStore = create<AuthState>()(
       name: 'mk_auth',
       partialize: (s) => ({ user: s.user, accessToken: s.accessToken }),
       onRehydrateStorage: () => (state) => {
-        // Trigger hydration verification on load
+        // Let Zustand finish merging the persisted state before verifying the token.
+        // Calling hydrate() synchronously here can read a null accessToken and overwrite storage.
         if (state) {
-          void state.hydrate()
+          setTimeout(() => {
+            void state.hydrate()
+          }, 0)
         }
       },
     },

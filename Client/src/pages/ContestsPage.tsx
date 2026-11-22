@@ -8,6 +8,8 @@ import {
   ArrowRight,
   Loader2,
   Flame,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react'
 import { Badge, Button, GlassCard, Timer } from '../components/ui'
 import {
@@ -18,78 +20,6 @@ import {
 import { useAuthStore } from '../store/authStore'
 import { cn } from '../lib/cn'
 
-// Default mock contests dataset
-const getMockContests = (): ContestSummary[] => {
-  const now = Date.now()
-  let joinedList: string[] = []
-  try {
-    joinedList = JSON.parse(localStorage.getItem('mk_joined_contests') || '[]')
-  } catch {}
-
-  return [
-    {
-      id: 'mock-weekly-1',
-      title: 'MockKernel Weekly Contest 1',
-      description:
-        'Test your algorithmic speed on 4 fresh problems ranging from easy to hard with real-time scoring.',
-      status: 'live',
-      startTime: new Date(now - 1000 * 60 * 30).toISOString(),
-      endTime: new Date(now + 1000 * 60 * 90).toISOString(),
-      problemCount: 4,
-      participantCount: 142,
-      hasJoined: joinedList.includes('mock-weekly-1'),
-    },
-    {
-      id: 'mock-speed-2',
-      title: 'MockKernel Speed Sprint 2',
-      description:
-        'Fast-paced 60-minute algorithmic clash focusing on dynamic programming and data structure mastery.',
-      status: 'live',
-      startTime: new Date(now - 1000 * 60 * 15).toISOString(),
-      endTime: new Date(now + 1000 * 60 * 45).toISOString(),
-      problemCount: 3,
-      participantCount: 89,
-      hasJoined: joinedList.includes('mock-speed-2'),
-    },
-    {
-      id: 'mock-biweekly-1',
-      title: 'MockKernel Bi-Weekly Clash',
-      description:
-        'Competitive arena with real-time scoring, strict test cases, and anti-plagiarism guardrails.',
-      status: 'ended',
-      startTime: new Date(now - 1000 * 60 * 60 * 48).toISOString(),
-      endTime: new Date(now - 1000 * 60 * 60 * 46).toISOString(),
-      problemCount: 4,
-      participantCount: 310,
-      hasJoined: true,
-    },
-    {
-      id: 'mock-algo-warmup',
-      title: 'Algorithm Warmup Challenge',
-      description:
-        'Foundational contest covering binary search, two pointers, and hash maps. Ideal for beginners.',
-      status: 'ended',
-      startTime: new Date(now - 1000 * 60 * 60 * 120).toISOString(),
-      endTime: new Date(now - 1000 * 60 * 60 * 118).toISOString(),
-      problemCount: 3,
-      participantCount: 215,
-      hasJoined: false,
-    },
-    {
-      id: 'mock-grand-prix',
-      title: 'MockKernel Grand Prix 2026',
-      description:
-        'Grand championship featuring hard graph algorithms, segment trees, and system-level challenges.',
-      status: 'ended',
-      startTime: new Date(now - 1000 * 60 * 60 * 240).toISOString(),
-      endTime: new Date(now - 1000 * 60 * 60 * 236).toISOString(),
-      problemCount: 5,
-      participantCount: 540,
-      hasJoined: false,
-    },
-  ]
-}
-
 export default function ContestsPage() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
@@ -98,35 +28,32 @@ export default function ContestsPage() {
   const [loading, setLoading] = useState(true)
   const [joiningId, setJoiningId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const fetchContestList = () => {
     setLoading(true)
+    setLoadError(null)
     getContests()
       .then((res) => {
-        if (res?.data && res.data.length > 0) {
-          // Merge with local joined state
-          let joinedList: string[] = []
-          try {
-            joinedList = JSON.parse(localStorage.getItem('mk_joined_contests') || '[]')
-          } catch {}
-
-          const merged = res.data.map((c) => ({
-            ...c,
-            hasJoined: c.hasJoined || joinedList.includes(c.id),
-          }))
-          setAllContests(merged)
-        } else {
-          setAllContests(getMockContests())
+        if (!Array.isArray(res?.data)) {
+          throw new Error('The contests API returned an unexpected response.')
         }
+        setAllContests(res.data)
       })
-      .catch(() => {
-        // Fallback to rich mock contests when backend is offline
-        setAllContests(getMockContests())
+      .catch((err: unknown) => {
+        setAllContests([])
+        setLoadError(
+          err instanceof Error
+            ? err.message
+            : 'Could not reach the contest service. Please try again.'
+        )
       })
       .finally(() => setLoading(false))
   }
 
   useEffect(() => {
+    // Initial data fetch intentionally updates loading/error state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchContestList()
   }, [])
 
@@ -165,12 +92,7 @@ export default function ContestsPage() {
       // Navigate straight to the live arena
       navigate(`/contests/${contestId}`)
     } catch (err: unknown) {
-      // In case of error, still allow joining mock contest
-      if (contestId.startsWith('mock-')) {
-        navigate(`/contests/${contestId}`)
-      } else {
-        setActionError(err instanceof Error ? err.message : 'Could not join contest')
-      }
+      setActionError(err instanceof Error ? err.message : 'Could not join contest')
     } finally {
       setJoiningId(null)
     }
@@ -193,8 +115,11 @@ export default function ContestsPage() {
         </div>
 
         {/* Filter Switcher Buttons */}
-        <div className="flex flex-wrap items-center gap-2 pt-2" role="tablist">
+        <div className="flex flex-wrap items-center gap-2 pt-2" role="tablist" aria-label="Filter contests">
           <button
+            type="button"
+            role="tab"
+            aria-selected={filter === 'all'}
             onClick={() => setFilter('all')}
             className={cn(
               'rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-all flex items-center gap-1.5',
@@ -210,6 +135,9 @@ export default function ContestsPage() {
           </button>
 
           <button
+            type="button"
+            role="tab"
+            aria-selected={filter === 'live'}
             onClick={() => setFilter('live')}
             className={cn(
               'rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-all flex items-center gap-1.5',
@@ -226,6 +154,9 @@ export default function ContestsPage() {
           </button>
 
           <button
+            type="button"
+            role="tab"
+            aria-selected={filter === 'ended'}
             onClick={() => setFilter('ended')}
             className={cn(
               'rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-all flex items-center gap-1.5',
@@ -248,19 +179,36 @@ export default function ContestsPage() {
         </div>
       )}
 
+      {loadError && (
+        <GlassCard className="flex flex-col items-center justify-center gap-3 border-bad/30 bg-bad/5 py-10 text-center">
+          <AlertCircle className="size-8 text-bad" />
+          <div>
+            <h3 className="text-base font-semibold text-ink">Contest service unavailable</h3>
+            <p className="mt-1 text-xs text-muted">{loadError}</p>
+          </div>
+          <Button variant="secondary" size="sm" onClick={fetchContestList} leftIcon={<RefreshCw className="size-4" />}>
+            Retry
+          </Button>
+        </GlassCard>
+      )}
+
       {/* Contests List */}
       {loading ? (
         <div className="flex h-48 flex-col items-center justify-center gap-3 text-muted">
           <Loader2 className="size-6 animate-spin text-cyan" />
           <p className="text-xs font-mono">Fetching contest arena...</p>
         </div>
-      ) : displayedContests.length === 0 ? (
-        <GlassCard className="flex flex-col items-center justify-center py-16 text-center text-muted">
-          <Trophy className="size-12 text-muted/40 mb-3" />
+      ) : loadError ? null : displayedContests.length === 0 ? (
+        <GlassCard className="flex flex-col items-center justify-center px-4 py-16 text-center text-muted">
+          <Trophy className="mb-3 size-12 text-muted/40" />
           <h3 className="text-lg font-semibold text-ink">
-            No {filter === 'live' ? 'live' : filter === 'ended' ? 'past' : ''} contests found
+            No {filter === 'live' ? 'live' : filter === 'ended' ? 'ended' : ''} contests found
           </h3>
-          <p className="text-sm mt-1">Check back soon for upcoming tournaments and challenges.</p>
+          <p className="mt-1 text-sm">
+            {filter === 'all'
+              ? 'Check back soon for upcoming tournaments and challenges.'
+              : 'Try another filter to see the available contests.'}
+          </p>
         </GlassCard>
       ) : (
         <ul className="flex flex-col gap-4 sm:gap-5">

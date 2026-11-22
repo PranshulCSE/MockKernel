@@ -1,8 +1,11 @@
-
 export function Logo() {
   return (
-    <span className="inline-flex items-center gap-2.5 font-display text-xl font-bold tracking-tight">
-    <img src="/Logo.png" alt="Logo" className="h-20 w-18" />
+    <span className="inline-flex items-center font-display text-xl font-bold tracking-tight">
+      <img
+        src="/Logo.png"
+        alt="MockKernel"
+        className="h-9 w-auto max-w-[150px] object-contain sm:h-10"
+      />
     </span>
   )
 }

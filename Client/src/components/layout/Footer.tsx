@@ -1,162 +1,113 @@
 import { Link } from 'react-router'
-import {
-  Terminal,
-  Trophy,
-  Mic,
-} from 'lucide-react'
+import { Terminal, Trophy, Mic, Code2, Heart } from 'lucide-react'
 import { Logo } from './Logo'
 
+const practiceLinks = [
+  { label: 'Problem Catalog', to: '/practice' },
+  { label: 'Dashboard', to: '/dashboard' },
+  { label: 'Contest Arena', to: '/contests' },
+]
+
+const contestLinks = [
+  { label: 'All Contests', to: '/contests' },
+  { label: 'Live Contests', to: '/contests' },
+  { label: 'Leaderboards', to: '/contests' },
+]
+
+const interviewLinks = [
+  { label: 'Start Interview', to: '/interview' },
+  { label: 'Past Sessions', to: '/interviews' },
+  { label: 'MERN & Python', to: '/interview' },
+]
+
 export function Footer() {
-  const currentYear = 2026
+  const currentYear = new Date().getFullYear()
 
   return (
-    <footer className="border-t border-white/10 bg-[#090C13] text-muted text-sm mt-auto">
-      {/* Upper Main Footer Grid */}
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8">
-          {/* Brand Info & Mission (2 cols on lg) */}
-          <div className="flex flex-col gap-4 lg:col-span-2">
-            <Link to="/" className="inline-block shrink-0">
+    <footer className="mt-auto border-t border-line bg-base text-sm text-muted">
+      <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+        <div className="flex flex-col gap-3">
+          {/* Brand */}
+          <div className="col-span-3 flex flex-col gap-3 lg:col-span-2">
+            <Link to="/" className="inline-flex w-fit shrink-0" aria-label="MockKernel home">
               <Logo />
             </Link>
-            <p className="text-xs sm:text-sm text-muted leading-relaxed max-w-sm">
-              MockKernel bridges algorithmic mastery with real-world communication.
-              Solve high-caliber coding problems in sandboxed environments, then practice
-              explaining trade-offs out loud with adaptive AI voice interviewers.
+            <p className="max-w-sm text-xs leading-relaxed text-muted sm:text-sm">
+              Solve coding problems, compete in live contests, and practice explaining your
+              thinking with AI mock interviews.
             </p>
-
-            {/* Platform Status Pill */}
-            <div className="flex items-center gap-2 pt-2">
-              <div className="inline-flex items-center gap-2 rounded-full border border-ok/30 bg-ok/10 px-3 py-1 text-xs font-mono text-ok">
-                <span className="size-2 rounded-full bg-ok shadow-[0_0_8px_#34D399] animate-pulse" />
-                <span>All Systems Operational</span>
-              </div>
-            </div>
+            <p className="text-xs">© {currentYear} MockKernel</p>
+            <span className="hidden w-fit items-center gap-2 rounded-full border border-cyan/25 bg-cyan/10 px-3 py-1 text-[11px] font-mono text-cyan">
+              <Terminal className="size-3.5" aria-hidden />
+              Practice. Compete. Explain.
+            </span>
           </div>
 
-          {/* Column 1: Problem Catalog */}
-          <div className="flex flex-col gap-3">
-            <h4 className="text-xs font-mono uppercase tracking-wider text-ink font-semibold flex items-center gap-1.5">
-              <Terminal className="size-3.5 text-cyan" />
-              Practice Arena
-            </h4>
-            <ul className="flex flex-col gap-2 text-xs">
-              <li>
-                <Link to="/practice" className="hover:text-ink transition-colors">
-                  All Problems
-                </Link>
-              </li>
-              <li>
-                <Link to="/practice" className="hover:text-ink transition-colors">
-                  Algorithms & DSA
-                </Link>
-              </li>
-              <li>
-                <Link to="/practice" className="hover:text-ink transition-colors">
-                  Dynamic Programming
-                </Link>
-              </li>
-              <li>
-                <Link to="/practice" className="hover:text-ink transition-colors">
-                  System Design & Concurrency
-                </Link>
-              </li>
-              <li>
-                <Link to="/practice" className="hover:text-ink transition-colors">
-                  Python, C++, Java, JS
-                </Link>
-              </li>
+          {/* Practice */}
+          <div className="hidden min-w-0 flex-col gap-2.5">
+            <h2 className="flex items-center gap-1.5 text-[11px] font-mono font-semibold uppercase tracking-wider text-ink sm:text-xs">
+              <Terminal className="size-3.5 shrink-0 text-cyan" aria-hidden />
+              Practice
+            </h2>
+            <ul className="flex flex-col gap-1.5 text-[11px] sm:text-xs">
+              {practiceLinks.map((link) => (
+                <li key={link.label}>
+                  <Link to={link.to} className="transition-colors hover:text-ink">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* Column 2: Contests & Leaderboard */}
-          <div className="flex flex-col gap-3">
-            <h4 className="text-xs font-mono uppercase tracking-wider text-ink font-semibold flex items-center gap-1.5">
-              <Trophy className="size-3.5 text-cyan" />
+          {/* Contests */}
+          <div className="hidden min-w-0 flex-col gap-2.5">
+            <h2 className="flex items-center gap-1.5 text-[11px] font-mono font-semibold uppercase tracking-wider text-ink sm:text-xs">
+              <Trophy className="size-3.5 shrink-0 text-cyan" aria-hidden />
               Contests
-            </h4>
-            <ul className="flex flex-col gap-2 text-xs">
-              <li>
-                <Link to="/contests" className="hover:text-ink transition-colors">
-                  Live & Upcoming Rounds
-                </Link>
-              </li>
-              <li>
-                <Link to="/contests" className="hover:text-ink transition-colors">
-                  Weekly Arena Tournaments
-                </Link>
-              </li>
-              <li>
-                <Link to="/contests" className="hover:text-ink transition-colors">
-                  Realtime Standings
-                </Link>
-              </li>
-              <li>
-                <Link to="/contests" className="hover:text-ink transition-colors">
-                  Anti-Plagiarism Guardrails
-                </Link>
-              </li>
-              <li>
-                <Link to="/dashboard" className="hover:text-ink transition-colors">
-                  Global Rating & Badges
-                </Link>
-              </li>
+            </h2>
+            <ul className="flex flex-col gap-1.5 text-[11px] sm:text-xs">
+              {contestLinks.map((link) => (
+                <li key={link.label}>
+                  <Link to={link.to} className="transition-colors hover:text-ink">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* Column 3: Mock Interview */}
-          <div className="flex flex-col gap-3">
-            <h4 className="text-xs font-mono uppercase tracking-wider text-ink font-semibold flex items-center gap-1.5">
-              <Mic className="size-3.5 text-cyan" />
-              AI Mock Interview
-            </h4>
-            <ul className="flex flex-col gap-2 text-xs">
-              <li>
-                <Link to="/interview" className="hover:text-ink transition-colors">
-                  Voice Interviewer
-                </Link>
-              </li>
-              <li>
-                <Link to="/interview" className="hover:text-ink transition-colors">
-                  MERN Stack Interviews
-                </Link>
-              </li>
-              <li>
-                <Link to="/interview" className="hover:text-ink transition-colors">
-                  Python Architecture
-                </Link>
-              </li>
-              <li>
-                <Link to="/interview" className="hover:text-ink transition-colors">
-                  OS & DBMS Fundamentals
-                </Link>
-              </li>
-              <li>
-                <Link to="/interviews" className="hover:text-ink transition-colors">
-                  Performance History
-                </Link>
-              </li>
+          {/* Interview */}
+          <div className="hidden min-w-0 flex-col gap-2.5">
+            <h2 className="flex items-center gap-1.5 text-[11px] font-mono font-semibold uppercase tracking-wider text-ink sm:text-xs">
+              <Mic className="size-3.5 shrink-0 text-cyan" aria-hidden />
+              Interview
+            </h2>
+            <ul className="flex flex-col gap-1.5 text-[11px] sm:text-xs">
+              {interviewLinks.map((link) => (
+                <li key={link.label}>
+                  <Link to={link.to} className="transition-colors hover:text-ink">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
       </div>
 
-      {/* Lower Copyright & Legal Bar */}
-      <div className="border-t border-white/5 bg-black/40 py-6">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-center sm:text-left">
-            <span>© {currentYear} MockKernel Inc. All rights reserved.</span>
-            <span className="hidden sm:inline text-white/10">•</span>
-            <span className="hover:text-ink transition-colors cursor-pointer">Privacy Policy</span>
-            <span className="hidden sm:inline text-white/10">•</span>
-            <span className="hover:text-ink transition-colors cursor-pointer">Terms of Service</span>
-            <span className="hidden sm:inline text-white/10">•</span>
-            <span className="hover:text-ink transition-colors cursor-pointer">Security Safeguards</span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <span className="font-mono text-[11px] text-muted/60">
-              MockKernel v2.4 (Engine: Judge0 + Groq AI)
+      <div className="hidden border-t border-line bg-surface-soft py-4">
+        <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-2.5 px-4 text-center text-[10px] text-muted sm:flex-row sm:px-6 sm:text-left sm:text-[11px] lg:px-8">
+          <p>© {currentYear} MockKernel. All rights reserved.</p>
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5">
+            <span className="inline-flex items-center gap-1.5">
+              <Code2 className="size-3.5" aria-hidden />
+              Built for focused practice
+            </span>
+            <span className="hidden text-white/10 sm:inline">•</span>
+            <span className="inline-flex items-center gap-1.5">
+              <Heart className="size-3.5 text-pink" aria-hidden />
+              React · Express · MongoDB
             </span>
           </div>
         </div>

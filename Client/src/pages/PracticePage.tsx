@@ -1,9 +1,9 @@
 import { useState, useEffect, useTransition } from 'react'
 import { Link } from 'react-router'
-import { Search, ChevronLeft, ChevronRight, Terminal, Loader2, Hash } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, Terminal, Loader2, Hash, AlertCircle, RefreshCw } from 'lucide-react'
 import { Badge, Chip, GlassCard, Button } from '../components/ui'
 import { useAuthStore } from '../store/authStore'
-import { sampleProblems, type Difficulty } from '../features/practice/problems'
+import type { Difficulty } from '../features/practice/problems'
 import { getProblems, type ProblemSummary, type Pagination } from '../api/problems'
 
 const languages = ['Python', 'C++', 'Java', 'JavaScript']
@@ -23,13 +23,15 @@ export default function PracticePage() {
   const [page, setPage] = useState(1)
   const [limit] = useState(10)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
   const [, startTransition] = useTransition()
 
   const [problems, setProblems] = useState<ProblemSummary[]>([])
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
     limit: 10,
-    total: sampleProblems.length,
+    total: 0,
     totalPages: 1,
   })
 
@@ -38,54 +40,34 @@ export default function PracticePage() {
 
     const loadProblems = async () => {
       setLoading(true)
+      setError(null)
       try {
         const res = await getProblems({ page, limit, search, difficulty: filter })
-        if (isCancelled || !res?.data) return
-
-        const withSerial = res.data.map((p, idx) => ({
-          ...p,
-          serialNo: p.serialNo ?? (idx + 1 + (page - 1) * limit),
-        }))
-        setProblems(withSerial)
-        if (res.pagination) {
-          setPagination(res.pagination)
-        }
-      } catch {
-        // Fallback to sample problems if backend is starting or offline
         if (isCancelled) return
 
-        const cleanQuery = search.trim().toLowerCase()
-        const serialQuery = cleanQuery.replace(/^#/, '')
-        const filtered = sampleProblems.filter((p) => {
-          const matchesDifficulty = filter === 'All' || p.difficulty === filter
-          const matchesSerial = cleanQuery.startsWith('#')
-            ? String(p.serialNo) === serialQuery
-            : String(p.serialNo) === cleanQuery
-          const matchesSearch =
-            !cleanQuery ||
-            matchesSerial ||
-            p.title.toLowerCase().includes(cleanQuery) ||
-            p.topic.toLowerCase().includes(cleanQuery)
-          return matchesDifficulty && matchesSearch
-        })
-        setProblems(
-          filtered.map((p) => ({
-            id: p.id,
-            serialNo: p.serialNo,
-            title: p.title,
-            difficulty: p.difficulty,
-            supportedLanguages: ['python', 'cpp', 'java', 'javascript'],
-            topic: p.topic,
-            acceptance: p.acceptance,
-            createdAt: new Date().toISOString(),
-          }))
+        if (!Array.isArray(res?.data)) {
+          throw new Error('The problems API returned an unexpected response.')
+        }
+
+        setProblems(res.data)
+        if (res.pagination) {
+          setPagination(res.pagination)
+        } else {
+          setPagination({
+            page,
+            limit,
+            total: res.data.length,
+            totalPages: Math.max(1, Math.ceil(res.data.length / limit)),
+          })
+        }
+      } catch (err: unknown) {
+        if (isCancelled) return
+        setProblems([])
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Could not load problems. Please try again.'
         )
-        setPagination({
-          page: 1,
-          limit: 10,
-          total: filtered.length,
-          totalPages: Math.ceil(filtered.length / 10) || 1,
-        })
       } finally {
         if (!isCancelled) setLoading(false)
       }
@@ -96,7 +78,7 @@ export default function PracticePage() {
     return () => {
       isCancelled = true
     }
-  }, [page, limit, search, filter])
+  }, [page, limit, search, filter, reloadKey])
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value
@@ -153,7 +135,7 @@ export default function PracticePage() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted pointer-events-none" />
             <input
               type="search"
-              placeholder="Search by serial (#1), title, or topic..."
+              placeholder="Search by serial (#1), or title..."
               value={search}
               onChange={handleSearchChange}
               aria-label="Search problems"
@@ -180,6 +162,22 @@ export default function PracticePage() {
             <Loader2 className="size-6 animate-spin text-cyan" />
             <p className="text-sm font-mono">Loading problem catalog...</p>
           </div>
+        ) : error ? (
+          <GlassCard className="flex flex-col items-center justify-center gap-3 border-bad/30 bg-bad/5 py-12 text-center">
+            <AlertCircle className="size-9 text-bad" />
+            <div>
+              <p className="text-lg font-semibold text-ink">Could not load problems</p>
+              <p className="mt-1 text-sm text-muted">{error}</p>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              leftIcon={<RefreshCw className="size-4" />}
+              onClick={() => setReloadKey((key) => key + 1)}
+            >
+              Retry
+            </Button>
+          </GlassCard>
         ) : problems.length === 0 ? (
           <GlassCard className="flex flex-col items-center justify-center py-12 text-center text-muted">
             <Hash className="size-10 text-muted/40 mb-2" />
@@ -188,18 +186,18 @@ export default function PracticePage() {
           </GlassCard>
         ) : (
           <ul className="flex flex-col gap-3">
-            {problems.map((p, idx) => {
-              const displaySerial = p.serialNo ?? (idx + 1)
+            {problems.map((p) => {
+              const displaySerial = p.serialNo
               return (
                 <li key={p.id}>
                   <Link to={`/problems/${p.id}`} className="group block focus-visible:outline-none">
                     <GlassCard className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:px-6 sm:py-4 transition-all duration-200 hover:border-cyan/40 hover:bg-white/[0.07] group-hover:shadow-[0_0_20px_rgba(6,182,212,0.15)]">
                       <div className="flex items-center gap-3 sm:gap-4">
                         <span className="flex items-center justify-center min-w-[2.25rem] sm:min-w-[2.5rem] h-7 sm:h-8 rounded-md bg-cyan/10 border border-cyan/30 text-xs font-mono font-bold text-cyan shadow-sm shrink-0">
-                          #{displaySerial}
+                          #{displaySerial ?? '—'}
                         </span>
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-base sm:text-lg font-semibold text-ink group-hover:text-cyan transition-colors">
+                        <div className="flex min-w-0 flex-col gap-0.5">
+                          <span className="break-words text-base sm:text-lg font-semibold text-ink group-hover:text-cyan transition-colors">
                             {p.title}
                           </span>
                           {p.topic && (

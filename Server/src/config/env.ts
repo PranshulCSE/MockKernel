@@ -33,6 +33,7 @@ export interface EnvConfig {
   redisPort: number;
   redisPassword?: string;
   redisUrl?: string;
+  redisEnabled: boolean;
   jwtSecret: string;
   jwtExpiresIn: string;
   googleClientId?: string;
@@ -46,6 +47,11 @@ export interface EnvConfig {
   clientUrl: string;
   corsOrigins: string[];
   plagiarismThreshold: number;
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpUser?: string;
+  smtpPass?: string;
+  smtpFrom?: string;
 }
 
 function isValidHttpUrl(value: string): boolean {
@@ -65,6 +71,14 @@ function parseCorsOrigins(): string[] {
     .filter((item) => item.length > 0);
 
   return origins.length > 0 ? origins : ['http://localhost:5173'];
+}
+
+/** Redis is opt-in locally and on by default in production. */
+function parseRedisEnabled(nodeEnv: string): boolean {
+  const raw = process.env.REDIS_ENABLED?.trim().toLowerCase();
+  if (raw === 'true') return true;
+  if (raw === 'false') return false;
+  return nodeEnv === 'production';
 }
 
 /**
@@ -149,6 +163,7 @@ export function validateEnv(): EnvConfig {
 
 /** Reads current process.env into a typed configuration object. */
 export function getEnvConfig(): EnvConfig {
+  const nodeEnv = process.env.NODE_ENV || 'development';
   const rawThreshold = Number(process.env.PLAGIARISM_THRESHOLD);
   const plagiarismThreshold =
     Number.isFinite(rawThreshold) && rawThreshold > 0 && rawThreshold <= 1 ? rawThreshold : 0.85;
@@ -165,13 +180,14 @@ export function getEnvConfig(): EnvConfig {
   const corsOrigins = parseCorsOrigins();
 
   return {
-    nodeEnv: process.env.NODE_ENV || 'development',
+    nodeEnv,
     port,
     mongoUri: process.env.MONGODB_URI?.trim() || '',
     redisHost: process.env.REDIS_HOST?.trim() || '127.0.0.1',
     redisPort,
     ...(process.env.REDIS_PASSWORD ? { redisPassword: process.env.REDIS_PASSWORD } : {}),
     ...(process.env.REDIS_URL?.trim() ? { redisUrl: process.env.REDIS_URL.trim() } : {}),
+    redisEnabled: parseRedisEnabled(nodeEnv),
     jwtSecret: process.env.JWT_SECRET?.trim() || '',
     jwtExpiresIn: process.env.JWT_EXPIRES_IN?.trim() || '7d',
     ...(process.env.GOOGLE_CLIENT_ID?.trim()
@@ -180,7 +196,7 @@ export function getEnvConfig(): EnvConfig {
     ...(process.env.GROQ_API_KEY?.trim()
       ? { groqApiKey: process.env.GROQ_API_KEY.trim() }
       : {}),
-    groqModel: process.env.GROQ_MODEL?.trim() || 'llama-3.3-70b-versatile',
+    groqModel: process.env.GROQ_MODEL?.trim() || 'openai/gpt-oss-120b',
     ...(process.env.GEMINI_API_KEY?.trim()
       ? { geminiApiKey: process.env.GEMINI_API_KEY.trim() }
       : {}),
@@ -193,5 +209,10 @@ export function getEnvConfig(): EnvConfig {
     clientUrl: corsOrigins[0] ?? 'http://localhost:5173',
     corsOrigins,
     plagiarismThreshold,
+    ...(process.env.SMTP_HOST?.trim() ? { smtpHost: process.env.SMTP_HOST.trim() } : {}),
+    ...(process.env.SMTP_PORT?.trim() ? { smtpPort: Number(process.env.SMTP_PORT) } : {}),
+    ...(process.env.SMTP_USER?.trim() ? { smtpUser: process.env.SMTP_USER.trim() } : {}),
+    ...(process.env.SMTP_PASS ? { smtpPass: process.env.SMTP_PASS } : {}),
+    ...(process.env.SMTP_FROM?.trim() ? { smtpFrom: process.env.SMTP_FROM.trim() } : {}),
   };
 }

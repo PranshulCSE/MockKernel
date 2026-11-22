@@ -31,7 +31,7 @@ export interface AssessmentSummary {
     strikes: number
     startedAt: string
     submittedAt?: string
-    codeSubmissions?: Record<string, any>
+    codeSubmissions?: Record<string, unknown>
   } | null
 }
 
@@ -118,6 +118,28 @@ export interface AssessmentReportData {
   sessions: CandidateReportItem[]
 }
 
+export interface AssessmentCodeSubmission {
+  code: string
+  language: string
+  testCasesPassed?: number
+  totalTestCases?: number
+}
+
+/** Extracts a backend error message without relying on `any`. */
+export function getApiErrorMessage(err: unknown, fallback: string): string {
+  if (err && typeof err === 'object') {
+    const candidate = err as {
+      response?: { data?: { error?: { message?: string } } }
+      message?: string
+    }
+    const message = candidate.response?.data?.error?.message ?? candidate.message
+    if (typeof message === 'string' && message.length > 0) {
+      return message
+    }
+  }
+  return fallback
+}
+
 export interface CreateAssessmentPayload {
   title: string
   description?: string
@@ -187,7 +209,7 @@ export const assessmentsApi = {
   // Candidate: Manual submission
   submit: async (
     assessmentId: string,
-    codeSubmissions: Record<string, { code: string; language: string; testCasesPassed?: number; totalTestCases?: number }>
+    codeSubmissions: Record<string, AssessmentCodeSubmission>
   ): Promise<{
     id: string
     status: string
@@ -229,7 +251,7 @@ export const assessmentsApi = {
       sessionId?: string
       reason: string
       status?: string
-      codeSubmissions?: Record<string, any>
+      codeSubmissions?: Record<string, unknown>
     }
   ): boolean => {
     const url = `${BASE_URL}/api/assessments/${assessmentId}/auto-submit`
@@ -257,6 +279,15 @@ export const assessmentsApi = {
   create: async (payload: CreateAssessmentPayload): Promise<AdminAssessmentItem> => {
     const res = await client.post<{ data: AdminAssessmentItem }>('/api/admin/assessments', payload)
     return res.data
+  },
+
+  update: async (id: string, payload: Partial<Pick<CreateAssessmentPayload, 'title' | 'description' | 'code' | 'durationMinutes' | 'startTime' | 'endTime'>>): Promise<AdminAssessmentItem> => {
+    const res = await client.patch<{ data: AdminAssessmentItem }>(`/api/admin/assessments/${id}`, payload)
+    return res.data
+  },
+
+  remove: async (id: string): Promise<void> => {
+    await client.delete(`/api/admin/assessments/${id}`)
   },
 
   // Admin: View report

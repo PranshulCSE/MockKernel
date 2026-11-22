@@ -13,6 +13,7 @@ interface SubmissionStatsFacet {
   solvedProblems: CountRow[];
   attemptedProblems: CountRow[];
   totalSubmissions: CountRow[];
+  acceptedSubmissions: CountRow[];
 }
 
 interface InterviewStatsRow {
@@ -54,6 +55,10 @@ export async function getMyStats(req: Request, res: Response): Promise<void> {
             { $count: 'count' },
           ],
           totalSubmissions: [{ $count: 'count' }],
+          acceptedSubmissions: [
+            { $match: { verdict: 'ACCEPTED' } },
+            { $count: 'count' },
+          ],
         },
       },
     ]).exec(),
@@ -100,6 +105,7 @@ export async function getMyStats(req: Request, res: Response): Promise<void> {
       solvedProblems: countFromFacet(submissionStats?.solvedProblems),
       attemptedProblems: countFromFacet(submissionStats?.attemptedProblems),
       totalSubmissions: countFromFacet(submissionStats?.totalSubmissions),
+      acceptedSubmissions: countFromFacet(submissionStats?.acceptedSubmissions),
       contestsJoined,
       interviewsStarted: interviewStats?.total ?? 0,
       interviewsCompleted: interviewStats?.completed ?? 0,

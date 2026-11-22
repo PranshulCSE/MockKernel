@@ -8,3 +8,10 @@ build/
 # Local-only database seed script (never commit)
 Server/src/scripts/seed.ts
 
+# Logs
+logs/
+*.log
+app.log
+Server/logs/
+Client/logs/
+

@@ -10,6 +10,8 @@ import {
   recordStrike,
   startSession,
   submitAssessment,
+  updateAssessment,
+  deleteAssessment,
 } from '../controllers/assessmentController.js';
 import {
   authenticate,
@@ -20,6 +22,21 @@ import { rateLimit } from '../middleware/rateLimiter.js';
 import { asyncHandler } from '../utils/http.js';
 
 export const publicAssessmentRouter = Router();
+
+// Allow admin creation and export on /api/assessments as well
+publicAssessmentRouter.post(
+  '/',
+  authenticate,
+  requireRole('admin', 'superadmin'),
+  asyncHandler(createAssessment)
+);
+
+publicAssessmentRouter.get(
+  '/:id/export',
+  authenticate,
+  requireRole('admin', 'superadmin'),
+  asyncHandler(exportAssessmentReport)
+);
 
 publicAssessmentRouter.get(
   '/join/:code',
@@ -68,5 +85,7 @@ export const adminAssessmentRouter = Router();
 adminAssessmentRouter.use(authenticate, requireRole('admin', 'superadmin'));
 adminAssessmentRouter.get('/', asyncHandler(getAdminAssessments));
 adminAssessmentRouter.post('/', asyncHandler(createAssessment));
+adminAssessmentRouter.patch('/:id', asyncHandler(updateAssessment));
+adminAssessmentRouter.delete('/:id', asyncHandler(deleteAssessment));
 adminAssessmentRouter.get('/:id/report', asyncHandler(getAssessmentReport));
 adminAssessmentRouter.get('/:id/export', asyncHandler(exportAssessmentReport));
