@@ -327,7 +327,9 @@ Input and Output formats follow standard competitive programming conventions.`,
       contestDraftKey(contestId, activePid, language, currentProblem)
     )
 
+    let cancelled = false
     const applyDraft = () => {
+      if (cancelled) return
       if (saved !== null) {
         setCode(saved)
         setIsDirty(saved !== defaultCode)
@@ -337,7 +339,10 @@ Input and Output formats follow standard competitive programming conventions.`,
       }
     }
 
-    applyDraft()
+    queueMicrotask(applyDraft)
+    return () => {
+      cancelled = true
+    }
   }, [contestId, activePid, language, currentProblem])
 
   const handleCodeChange = (newVal: string | undefined) => {
