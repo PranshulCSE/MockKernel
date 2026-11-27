@@ -30,11 +30,11 @@ export function Navbar() {
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin'
 
   const navLinks = [
-    { to: '/practice', label: 'Practice', icon: Terminal },
-    { to: '/contests', label: 'Contests', icon: Trophy },
-    { to: '/assessments/join', label: 'Join Assessment', icon: ShieldCheck },
-    { to: '/interview', label: 'Mock Interview', icon: Mic },
-    ...(isAdmin ? [{ to: '/admin', label: 'Admin Suite', icon: Shield }] : []),
+    { to: '/practice', label: 'Practice', icon: Terminal, accent: false },
+    { to: '/contests', label: 'Contests', icon: Trophy, accent: false },
+    { to: '/assessments/join', label: 'Join Assessment', icon: ShieldCheck, accent: false },
+    { to: '/interview', label: 'Mock Interview', icon: Mic, accent: false },
+    ...(isAdmin ? [{ to: '/admin', label: 'Admin Suite', icon: Shield, accent: true }] : []),
   ]
 
   return (
@@ -61,7 +61,9 @@ export function Navbar() {
                       'flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-medium transition-all duration-150 lg:text-sm',
                       isActive
                         ? 'bg-cyan/15 text-cyan border border-cyan/30 shadow-glow-cyan font-semibold'
-                        : 'text-muted hover:text-ink hover:bg-surface-soft border border-transparent'
+                        : l.accent
+                          ? 'border border-violet/30 bg-violet/10 text-violet hover:bg-violet/15 hover:text-violet'
+                          : 'text-muted hover:text-ink hover:bg-surface-soft border border-transparent'
                     )
                   }
                 >
@@ -77,23 +79,25 @@ export function Navbar() {
         <div className="hidden shrink-0 items-center gap-3 xl:flex">
           {user ? (
             <div className="flex items-center gap-3">
-              {isAdmin && (
-                <Badge tone={user.role === 'superadmin' ? 'flag' : 'run'}>
-                  <Shield className="size-3 mr-1" aria-hidden />
-                  {user.role === 'superadmin' ? 'SuperAdmin' : 'Admin'}
-                </Badge>
-              )}
               <Link
                 to="/dashboard"
                 className="flex items-center gap-2.5 whitespace-nowrap rounded-full px-2 py-1 transition-colors hover:bg-surface-soft"
               >
                 <span
-                  className="grid size-8 place-items-center rounded-full bg-cyan/20 border border-cyan/40 text-xs font-bold text-cyan shadow-glow-cyan"
+                  className="grid size-8 shrink-0 place-items-center rounded-full bg-cyan/20 border border-cyan/40 text-xs font-bold text-cyan shadow-glow-cyan"
                   aria-hidden
                 >
                   {user.name.charAt(0).toUpperCase()}
                 </span>
-                <span className="text-sm font-medium text-ink max-w-[120px] truncate">{user.name}</span>
+                <span className="flex min-w-0 flex-col items-start leading-tight">
+                  <span className="max-w-[120px] truncate text-sm font-medium text-ink">{user.name}</span>
+                  {isAdmin && (
+                    <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-violet">
+                      <Shield className="size-2.5" aria-hidden />
+                      {user.role === 'superadmin' ? 'Super Admin' : 'Admin'}
+                    </span>
+                  )}
+                </span>
               </Link>
               <Button
                 variant="ghost"
@@ -171,7 +175,8 @@ export function Navbar() {
                 </div>
                 {isAdmin && (
                   <Badge tone={user.role === 'superadmin' ? 'flag' : 'run'}>
-                    {user.role}
+                    <Shield className="mr-1 size-3" aria-hidden />
+                    {user.role === 'superadmin' ? 'Super Admin' : 'Admin'}
                   </Badge>
                 )}
               </div>
@@ -189,7 +194,9 @@ export function Navbar() {
                         'flex items-center gap-3 rounded-ctl px-3.5 py-2.5 text-sm font-medium transition-all',
                         isActive
                           ? 'bg-cyan/15 text-cyan border border-cyan/30 font-semibold'
-                          : 'text-muted hover:text-ink hover:bg-surface-soft border border-transparent'
+                          : l.accent
+                            ? 'border border-violet/30 bg-violet/10 text-violet hover:bg-violet/15'
+                            : 'text-muted hover:text-ink hover:bg-surface-soft border border-transparent'
                       )
                     }
                   >
