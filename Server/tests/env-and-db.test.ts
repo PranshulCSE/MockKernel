@@ -29,6 +29,12 @@ describe('Startup configuration, MongoDB connection, and Health endpoints', () =
     expect(config.plagiarismThreshold).toBe(0.85);
   });
 
+  it('accepts JUDGE0_AUTH_TOKEN as an alias for the Judge0 API key', () => {
+    delete process.env.JUDGE0_API_KEY;
+    process.env.JUDGE0_AUTH_TOKEN = 'alias-token';
+    expect(validateEnv().judge0ApiKey).toBe('alias-token');
+  });
+
   it('fails startup clearly when MONGODB_URI or JWT_SECRET is missing or invalid', () => {
     process.env.MONGODB_URI = '';
     process.env.JWT_SECRET = '';

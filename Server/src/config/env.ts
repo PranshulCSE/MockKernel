@@ -178,6 +178,7 @@ export function getEnvConfig(): EnvConfig {
       : 6379;
 
   const corsOrigins = parseCorsOrigins();
+  const judge0ApiKey = process.env.JUDGE0_API_KEY?.trim() || process.env.JUDGE0_AUTH_TOKEN?.trim();
 
   return {
     nodeEnv,
@@ -202,9 +203,7 @@ export function getEnvConfig(): EnvConfig {
       : {}),
     geminiModel: process.env.GEMINI_MODEL?.trim() || 'gemini-2.0-flash',
     judge0ApiUrl: (process.env.JUDGE0_API_URL?.trim() || 'http://localhost:2358').replace(/\/+$/, ''),
-    ...(process.env.JUDGE0_API_KEY?.trim()
-      ? { judge0ApiKey: process.env.JUDGE0_API_KEY.trim() }
-      : {}),
+    ...(judge0ApiKey ? { judge0ApiKey } : {}),
     submissionQueueName: process.env.SUBMISSION_QUEUE_NAME?.trim() || 'submission-queue',
     clientUrl: corsOrigins[0] ?? 'http://localhost:5173',
     corsOrigins,

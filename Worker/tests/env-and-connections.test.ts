@@ -35,6 +35,12 @@ describe('Worker startup configuration and connection error handling', () => {
     expect(config.workerConcurrency).toBe(3);
   });
 
+  it('accepts JUDGE0_AUTH_TOKEN as an alias for the Judge0 API key', () => {
+    delete process.env.JUDGE0_API_KEY;
+    process.env.JUDGE0_AUTH_TOKEN = 'alias-token';
+    expect(validateWorkerEnv().judge0ApiKey).toBe('alias-token');
+  });
+
   it('defaults Judge0 polling to a 10s window', () => {
     delete process.env.POLL_INTERVAL_MS;
     delete process.env.MAX_POLL_ATTEMPTS;
