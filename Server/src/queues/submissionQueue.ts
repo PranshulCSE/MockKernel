@@ -62,8 +62,9 @@ function resolveWorkerDirectory(): string {
 
 /**
  * Runs a submission through the Worker package directly when Redis is not
- * available. The Worker writes the verdict to MongoDB; the server's verdict
- * watcher emits the result to the client.
+ * available. The Worker uses Judge0 when JUDGE0_API_URL is configured,
+ * otherwise it falls back to its local runner. The Worker writes the verdict
+ * to MongoDB; the server's verdict watcher emits the result to the client.
  */
 function startLocalSubmission(jobData: SubmissionJobData): void {
   const workerDir = resolveWorkerDirectory();
@@ -87,9 +88,18 @@ function startLocalSubmission(jobData: SubmissionJobData): void {
     useShell = process.platform === 'win32';
   }
 
+  const judge0ApiUrl = process.env.JUDGE0_API_URL?.trim();
+  const useLocalRunner = !judge0ApiUrl || judge0ApiUrl === 'local';
+  const childEnv = { ...process.env };
+  if (useLocalRunner) {
+    childEnv.USE_LOCAL_RUNNER = 'true';
+  } else {
+    delete childEnv.USE_LOCAL_RUNNER;
+  }
+
   const child = spawn(command, args, {
     cwd: workerDir,
-    env: { ...process.env, USE_LOCAL_RUNNER: 'true' },
+    env: childEnv,
     stdio: 'ignore',
     shell: useShell,
   });
