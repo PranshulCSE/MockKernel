@@ -28,6 +28,7 @@ export default function DashboardPage() {
   const [newPassword, setNewPassword] = useState('')
   const [accountMessage, setAccountMessage] = useState('')
   const [accountBusy, setAccountBusy] = useState(false)
+  const [showAccountSettings, setShowAccountSettings] = useState(false)
 
   const [submissions, setSubmissions] = useState<SubmissionItem[]>([])
   const [interviews, setInterviews] = useState<InterviewSession[]>([])
@@ -125,14 +126,23 @@ export default function DashboardPage() {
       </GlassCard>
 
       <GlassCard className="p-5 sm:p-6">
-        <div className="mb-5 flex items-center gap-3 border-b border-line pb-4">
+        <div className="flex items-center gap-3">
           <UserRound className="size-5 text-cyan" />
-          <div>
+          <div className="min-w-0">
             <h2 className="font-display text-lg font-bold text-ink">Account settings</h2>
             <p className="text-xs text-muted">Update your display name and password.</p>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto shrink-0"
+            onClick={() => setShowAccountSettings((prev) => !prev)}
+          >
+            {showAccountSettings ? 'Close' : 'Manage'}
+          </Button>
         </div>
-        <div className="grid gap-6 lg:grid-cols-2">
+        {showAccountSettings && (
+        <div className="mt-5 grid gap-6 border-t border-line pt-5 lg:grid-cols-2">
           <form className="space-y-3" onSubmit={async (event) => {
             event.preventDefault(); setAccountBusy(true); setAccountMessage('')
             try { const next = await updateAccount({ name: profileName }); setUser(next); setAccountMessage('Profile updated.') }
@@ -153,7 +163,8 @@ export default function DashboardPage() {
             <Button type="submit" size="sm" loading={accountBusy} disabled={!currentPassword || newPassword.length < 8}>Update password</Button>
           </form>
         </div>
-        <p className="mt-5 border-t border-line pt-4 text-xs text-muted">
+        )}
+        <p className="mt-3 text-xs text-muted">
           Signed in as {user?.email}
         </p>
         {accountMessage && <p role="status" className="mt-3 text-xs text-cyan">{accountMessage}</p>}

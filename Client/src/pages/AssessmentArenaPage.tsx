@@ -27,6 +27,7 @@ import { StrikeWarningModal } from '../components/proctoring/StrikeWarningModal'
 import { ProctorCamera } from '../components/proctoring/ProctorCamera'
 import { Button, GlassCard, Badge, ResizablePanels } from '../components/ui'
 import { useAuthStore } from '../store/authStore'
+import { useThemeStore } from '../store/themeStore'
 import type { VerdictUpdatePayload } from '../types/socket'
 
 interface KeyboardShortcutEvent {
@@ -56,6 +57,7 @@ export default function AssessmentArenaPage() {
   const { id: assessmentId } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
+  const theme = useThemeStore((state) => state.theme)
   const { trackSubmission } = useSocket()
 
   // Arena loading & session states
@@ -344,6 +346,27 @@ export default function AssessmentArenaPage() {
         'editor.selectionBackground': '#7C3AED33',
       },
     })
+
+    monaco.editor.defineTheme('mockkernel-light', {
+      base: 'vs',
+      inherit: true,
+      rules: [
+        { token: 'comment', foreground: '64748B', fontStyle: 'italic' },
+        { token: 'keyword', foreground: '0284C7' },
+        { token: 'string', foreground: '059669' },
+        { token: 'number', foreground: 'DB2777' },
+        { token: 'type', foreground: '7C3AED' },
+      ],
+      colors: {
+        'editor.background': '#F7F9FD',
+        'editor.foreground': '#1E293B',
+        'editorLineNumber.foreground': '#64748B99',
+        'editorLineNumber.activeForeground': '#0284C7',
+        'editor.lineHighlightBackground': '#0F172A0A',
+        'editorCursor.foreground': '#0284C7',
+        'editor.selectionBackground': '#0EA5E933',
+      },
+    })
   }
 
   // Monaco onMount lockdown (disable context menu, intercept copy/paste and inspector keys)
@@ -471,7 +494,7 @@ export default function AssessmentArenaPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 p-4 rounded-xl border border-white/10 bg-white/5">
+          <div className="grid grid-cols-3 gap-3 p-4 rounded-xl border border-line bg-surface-soft">
             <div>
               <div className="text-xs text-muted">Final Score</div>
               <div className="text-xl font-bold font-mono text-cyan mt-1">
@@ -527,7 +550,7 @@ export default function AssessmentArenaPage() {
 
       {/* Fullscreen Initial Blocker Overlay (Candidate must enter fullscreen) */}
       {!proctorLock.isFullscreen && !proctorLock.warningModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-4 backdrop-blur-lg">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-lg">
           <div className="max-w-md w-full rounded-2xl border border-cyan/40 bg-base/95 p-8 text-center space-y-5 shadow-2xl shadow-cyan/20">
             <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-cyan/15 text-cyan">
               <Maximize className="size-8" />
@@ -553,7 +576,7 @@ export default function AssessmentArenaPage() {
       )}
 
       {/* Top Arena Navigation / Control Bar */}
-      <header className="h-14 border-b border-white/10 bg-[#0E131F] px-4 flex items-center justify-between shrink-0">
+      <header className="h-14 border-b border-line workspace-toolbar px-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <ShieldAlert className="size-5 text-cyan" />
@@ -563,7 +586,7 @@ export default function AssessmentArenaPage() {
           </div>
 
           {/* Problem Tabs */}
-          <div className="flex items-center gap-1.5 ml-2 border-l border-white/10 pl-3">
+          <div className="flex items-center gap-1.5 ml-2 border-l border-line pl-3">
             {problems.map((prob, idx) => (
               <button
                 key={prob._id}
@@ -571,7 +594,7 @@ export default function AssessmentArenaPage() {
                 className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
                   idx === currentProblemIndex
                     ? 'bg-cyan/20 text-cyan border border-cyan/40 font-semibold'
-                    : 'text-muted hover:text-ink hover:bg-white/5 border border-transparent'
+                    : 'text-muted hover:text-ink hover:bg-surface-soft border border-transparent'
                 }`}
               >
                 Problem {idx + 1}
@@ -586,7 +609,7 @@ export default function AssessmentArenaPage() {
             className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-mono font-bold ${
               timeRemainingSeconds < 300
                 ? 'bg-bad/20 text-bad border-bad/40 animate-pulse'
-                : 'bg-white/5 text-ink border-white/10'
+                : 'bg-surface-soft text-ink border-line'
             }`}
           >
             <Clock className="size-3.5" />
@@ -594,13 +617,13 @@ export default function AssessmentArenaPage() {
           </div>
 
           {/* Strikes Counter Indicator */}
-          <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-xs">
+          <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-soft border border-line text-xs">
             <span className="text-[11px] text-muted mr-1">Strikes:</span>
             {[1, 2, 3].map((s) => (
               <span
                 key={s}
                 className={`size-2 rounded-full ${
-                  s <= proctorLock.strikes ? 'bg-bad' : 'bg-white/20'
+                  s <= proctorLock.strikes ? 'bg-bad' : 'bg-line'
                 }`}
               />
             ))}
@@ -655,13 +678,13 @@ export default function AssessmentArenaPage() {
                 </div>
 
                 {/* Statement text */}
-                <div className="prose prose-invert prose-sm max-w-none text-muted leading-relaxed whitespace-pre-line font-sans">
+                <div className="prose prose-sm max-w-none text-muted leading-relaxed whitespace-pre-line font-sans">
                   {currentProblem.statement}
                 </div>
 
                 {/* Constraints */}
                 {currentProblem.constraints && (
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-1.5">
+                  <div className="rounded-xl border border-line bg-surface-soft p-4 space-y-1.5">
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-ink">
                       Constraints
                     </h3>
@@ -674,15 +697,15 @@ export default function AssessmentArenaPage() {
             }
             second={
               /* Right Panel: Monaco Editor & Console Split */
-              <div className="h-full flex flex-col bg-[#161B22]">
+              <div className="h-full flex flex-col workspace-editor">
                 {/* Editor Header */}
-                <div className="flex items-center justify-between border-b border-white/10 bg-[#0E131F] px-4 py-2 shrink-0">
+                <div className="flex items-center justify-between border-b border-line workspace-toolbar px-4 py-2 shrink-0">
                   <div className="flex items-center gap-2">
                     <FileCode className="size-4 text-cyan" />
                     <select
                       value={language}
                       onChange={(e) => setLanguage(e.target.value)}
-                      className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-medium text-ink focus:border-cyan focus:outline-none"
+                      className="rounded-lg border border-line bg-surface-soft px-2.5 py-1 text-xs font-medium text-ink focus:border-cyan focus:outline-none"
                     >
                       {LANGUAGES.map((l) => (
                         <option key={l.id} value={l.id} className="bg-base text-ink">
@@ -732,7 +755,7 @@ export default function AssessmentArenaPage() {
                           onChange={handleCodeChange}
                           beforeMount={handleEditorWillMount}
                           onMount={handleEditorMount}
-                          theme="mockkernel-dark"
+                          theme={theme === 'light' ? 'mockkernel-light' : 'mockkernel-dark'}
                           options={{
                             fontSize: 14,
                             fontFamily: '"JetBrains Mono Variable", monospace',
@@ -749,8 +772,8 @@ export default function AssessmentArenaPage() {
                       </div>
                     }
                     second={
-                      <div className="size-full flex flex-col bg-[#0E131F] border-t border-white/10">
-                        <div className="flex items-center gap-2 px-4 py-1.5 border-b border-white/10 text-xs font-medium text-muted">
+                      <div className="size-full flex flex-col workspace-toolbar border-t border-line">
+                        <div className="flex items-center gap-2 px-4 py-1.5 border-b border-line text-xs font-medium text-muted">
                           <Terminal className="size-3.5 text-cyan" />
                           <span>Execution Console</span>
                         </div>
@@ -773,8 +796,8 @@ export default function AssessmentArenaPage() {
 
       {/* Confirmation Submit Modal */}
       {showSubmitModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md">
-          <div className="max-w-md w-full rounded-2xl border border-white/15 bg-base/95 p-6 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/35 p-4 backdrop-blur-md">
+          <div className="max-w-md w-full rounded-2xl border border-line bg-base/95 p-6 space-y-4 shadow-2xl">
             <h3 className="text-lg font-bold font-display text-ink">
               Submit Assessment Solutions?
             </h3>
@@ -783,7 +806,7 @@ export default function AssessmentArenaPage() {
               session will be closed and you cannot make further changes.
             </p>
 
-            <div className="p-3 rounded-xl border border-white/10 bg-white/5 text-xs text-muted space-y-1">
+            <div className="p-3 rounded-xl border border-line bg-surface-soft text-xs text-muted space-y-1">
               <div>Total Problems: <span className="font-semibold text-ink">{problems.length}</span></div>
               <div>Time Left: <span className="font-semibold text-cyan">{formatTimer(timeRemainingSeconds)}</span></div>
             </div>

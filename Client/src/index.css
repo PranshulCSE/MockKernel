@@ -97,6 +97,7 @@
 :root:not(.dark):not([data-theme='dark']) [class~="bg-white/5"] { background-color: rgb(59 130 246 / 0.055) !important; }
 :root:not(.dark):not([data-theme='dark']) [class~="bg-white/10"] { background-color: rgb(59 130 246 / 0.085) !important; }
 :root:not(.dark):not([data-theme='dark']) [class~="bg-white/15"] { background-color: rgb(124 58 237 / 0.1) !important; }
+:root:not(.dark):not([data-theme='dark']) [class~="bg-white/20"] { background-color: rgb(99 102 241 / 0.16) !important; }
 :root:not(.dark):not([data-theme='dark']) [class~="bg-white/[0.02]"] { background-color: rgb(59 130 246 / 0.03) !important; }
 :root:not(.dark):not([data-theme='dark']) [class~="border-white/5"],
 :root:not(.dark):not([data-theme='dark']) [class~="border-white/10"],

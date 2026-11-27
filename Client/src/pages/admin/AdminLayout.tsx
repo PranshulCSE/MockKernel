@@ -20,7 +20,7 @@ export default function AdminLayout() {
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col pb-16 sm:pb-24">
-      <div className="sticky top-16 z-30 -mx-4 border-b border-line bg-base/95 px-4 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+      <div className="sticky top-16 z-30 -mx-3 border-b border-line bg-base/95 px-3 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <span className="grid size-8 shrink-0 place-items-center rounded-full border border-cyan/25 bg-cyan/10">
@@ -47,7 +47,7 @@ export default function AdminLayout() {
           Platform governance, authoring, live monitoring and audits.
         </p>
 
-        <nav aria-label="Admin Navigation" className="mt-3 flex items-center gap-2 overflow-x-auto pb-1">
+        <nav aria-label="Admin Navigation" className="mt-3 flex flex-wrap items-center gap-2 pb-1">
           {navLinks.map((l) => (
             <NavLink
               key={l.to}
