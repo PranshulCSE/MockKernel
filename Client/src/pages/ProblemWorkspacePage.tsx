@@ -102,6 +102,26 @@ console.log(solve(fs.readFileSync(0, 'utf8').trimEnd()))
 `,
 }
 
+function getStarterCode(problem: ProblemDetail | null, language: string): string {
+  return (
+    problem?.starterCode?.[language] ||
+    DEFAULT_STARTER_CODES[language] ||
+    '// Write solution here\n'
+  )
+}
+
+function starterVersion(code: string): string {
+  let hash = 0
+  for (let i = 0; i < code.length; i++) {
+    hash = (Math.imul(hash, 31) + code.charCodeAt(i)) | 0
+  }
+  return (hash >>> 0).toString(36)
+}
+
+function draftKeyFor(id: string, language: string, problem: ProblemDetail | null): string {
+  return `mk_draft_${id}_${language}_${starterVersion(getStarterCode(problem, language))}`
+}
+
 interface SubmissionItem {
   id: string
   verdict: Verdict
@@ -196,25 +216,31 @@ export default function ProblemWorkspacePage() {
   // 2. Draft Persistence & Starter Code Loading
   useEffect(() => {
     if (!id) return
-    const draftKey = `mk_draft_${id}_${language}`
+    const defaultCode = getStarterCode(problem, language)
+    const draftKey = draftKeyFor(id, language, problem)
     const savedDraft = localStorage.getItem(draftKey)
 
-    const defaultCode =
-      problem?.starterCode?.[language] ||
-      DEFAULT_STARTER_CODES[language] ||
-      '// Write solution here\n'
+    // A C++ submission must have an entry point. Discard stale/custom drafts
+    // copied from LeetCode-style starters so Judge0 never sees a no-main source.
+    const hasEntryPoint = language !== 'cpp' || /\bmain\s*\(/.test(savedDraft ?? '')
 
+    let cancelled = false
     const applyDraft = () => {
-      if (savedDraft !== null) {
+      if (cancelled) return
+      if (savedDraft !== null && hasEntryPoint) {
         setCode(savedDraft)
         setIsDirty(savedDraft !== defaultCode)
       } else {
+        if (savedDraft !== null) localStorage.removeItem(draftKey)
         setCode(defaultCode)
         setIsDirty(false)
       }
     }
 
-    applyDraft()
+    queueMicrotask(applyDraft)
+    return () => {
+      cancelled = true
+    }
   }, [id, language, problem])
 
   // Save draft on code edit
@@ -223,12 +249,8 @@ export default function ProblemWorkspacePage() {
     setCode(text)
     if (!id) return
 
-    const draftKey = `mk_draft_${id}_${language}`
-    localStorage.setItem(draftKey, text)
-
-    const defaultCode =
-      problem?.starterCode?.[language] || DEFAULT_STARTER_CODES[language] || ''
-    setIsDirty(text !== defaultCode)
+    localStorage.setItem(draftKeyFor(id, language, problem), text)
+    setIsDirty(text !== getStarterCode(problem, language))
   }
 
   // Warning before unload
@@ -245,11 +267,9 @@ export default function ProblemWorkspacePage() {
 
   // Reset to starter code
   const handleResetStarter = () => {
-    const defaultCode =
-      problem?.starterCode?.[language] || DEFAULT_STARTER_CODES[language] || ''
-    setCode(defaultCode)
+    setCode(getStarterCode(problem, language))
     if (id) {
-      localStorage.removeItem(`mk_draft_${id}_${language}`)
+      localStorage.removeItem(draftKeyFor(id, language, problem))
     }
     setIsDirty(false)
   }
@@ -303,6 +323,15 @@ export default function ProblemWorkspacePage() {
     if (!id || cooldownSeconds > 0) return
 
     setConsoleTab('output')
+
+    if (language === 'cpp' && !/\bmain\s*\(/.test(code)) {
+      setExecutionState({
+        status: 'COMPILE_ERROR',
+        compileOutput: 'C++ solutions must include an entry point: int main() { ... }',
+        isOptimistic: false,
+      })
+      return
+    }
 
     // Optimistic pending within 100ms
     setExecutionState({

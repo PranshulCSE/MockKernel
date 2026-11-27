@@ -105,6 +105,33 @@ console.log(solve(fs.readFileSync(0, 'utf8').trimEnd()))
 `,
 }
 
+function getContestStarterCode(problem: ProblemDetail | null, language: string): string {
+  return (
+    problem?.starterCode?.[language] ||
+    DEFAULT_STARTER_CODES[language] ||
+    '// Contest solution\n'
+  )
+}
+
+function starterVersion(code: string): string {
+  let hash = 0
+  for (let i = 0; i < code.length; i++) {
+    hash = (Math.imul(hash, 31) + code.charCodeAt(i)) | 0
+  }
+  return (hash >>> 0).toString(36)
+}
+
+function contestDraftKey(
+  contestId: string,
+  problemId: string,
+  language: string,
+  problem: ProblemDetail | null
+): string {
+  return `mk_contest_${contestId}_${problemId}_${language}_${starterVersion(
+    getContestStarterCode(problem, language)
+  )}`
+}
+
 export default function ContestArenaPage() {
   const theme = useThemeStore((state) => state.theme)
   const { id: contestId } = useParams<{ id: string }>()
@@ -295,13 +322,10 @@ Input and Output formats follow standard competitive programming conventions.`,
   // Draft loading per problem in contest
   useEffect(() => {
     if (!activePid || !contestId) return
-    const draftKey = `mk_contest_${contestId}_${activePid}_${language}`
-    const saved = localStorage.getItem(draftKey)
-
-    const defaultCode =
-      currentProblem?.starterCode?.[language] ||
-      DEFAULT_STARTER_CODES[language] ||
-      '// Contest solution\n'
+    const defaultCode = getContestStarterCode(currentProblem, language)
+    const saved = localStorage.getItem(
+      contestDraftKey(contestId, activePid, language, currentProblem)
+    )
 
     const applyDraft = () => {
       if (saved !== null) {
@@ -320,8 +344,10 @@ Input and Output formats follow standard competitive programming conventions.`,
     const text = newVal ?? ''
     setCode(text)
     if (!activePid || !contestId) return
-    const draftKey = `mk_contest_${contestId}_${activePid}_${language}`
-    localStorage.setItem(draftKey, text)
+    localStorage.setItem(
+      contestDraftKey(contestId, activePid, language, currentProblem),
+      text
+    )
     setIsDirty(true)
   }
 
@@ -601,9 +627,12 @@ Input and Output formats follow standard competitive programming conventions.`,
           variant="ghost"
           size="sm"
           onClick={() => {
-            const defCode =
-              currentProblem?.starterCode?.[language] || DEFAULT_STARTER_CODES[language] || ''
-            setCode(defCode)
+            setCode(getContestStarterCode(currentProblem, language))
+            if (activePid && contestId) {
+              localStorage.removeItem(
+                contestDraftKey(contestId, activePid, language, currentProblem)
+              )
+            }
             setIsDirty(false)
           }}
           className="h-8 px-2.5 text-xs text-muted hover:text-ink"
