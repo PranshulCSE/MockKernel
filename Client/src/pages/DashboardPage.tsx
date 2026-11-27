@@ -11,13 +11,12 @@ import {
   Sparkles,
   ExternalLink,
   UserRound,
-  MailCheck,
 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { GlassCard, Button, Badge, VerdictBadge, Skeleton, EmptyState } from '../components/ui'
 import { listUserSubmissions, type SubmissionItem } from '../api/submissions'
 import { listInterviews, type InterviewSession } from '../api/interviews'
-import { updateAccount, requestEmailVerification, confirmEmailVerification } from '../api/auth'
+import { updateAccount } from '../api/auth'
 import { Input } from '../components/ui/Input'
 import { getMyStats, type UserStats } from '../api/users'
 
@@ -27,9 +26,9 @@ export default function DashboardPage() {
   const [profileName, setProfileName] = useState(user?.name || '')
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
-  const [verificationCode, setVerificationCode] = useState('')
   const [accountMessage, setAccountMessage] = useState('')
   const [accountBusy, setAccountBusy] = useState(false)
+  const [showAccountSettings, setShowAccountSettings] = useState(false)
 
   const [submissions, setSubmissions] = useState<SubmissionItem[]>([])
   const [interviews, setInterviews] = useState<InterviewSession[]>([])
@@ -127,14 +126,23 @@ export default function DashboardPage() {
       </GlassCard>
 
       <GlassCard className="p-5 sm:p-6">
-        <div className="mb-5 flex items-center gap-3 border-b border-white/10 pb-4">
+        <div className="flex items-center gap-3">
           <UserRound className="size-5 text-cyan" />
-          <div>
+          <div className="min-w-0">
             <h2 className="font-display text-lg font-bold text-ink">Account settings</h2>
-            <p className="text-xs text-muted">Update your profile, password, and email verification.</p>
+            <p className="text-xs text-muted">Update your display name and password.</p>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto shrink-0"
+            onClick={() => setShowAccountSettings((prev) => !prev)}
+          >
+            {showAccountSettings ? 'Close' : 'Manage'}
+          </Button>
         </div>
-        <div className="grid gap-6 lg:grid-cols-2">
+        {showAccountSettings && (
+        <div className="mt-5 grid gap-6 border-t border-line pt-5 lg:grid-cols-2">
           <form className="space-y-3" onSubmit={async (event) => {
             event.preventDefault(); setAccountBusy(true); setAccountMessage('')
             try { const next = await updateAccount({ name: profileName }); setUser(next); setAccountMessage('Profile updated.') }
@@ -155,24 +163,10 @@ export default function DashboardPage() {
             <Button type="submit" size="sm" loading={accountBusy} disabled={!currentPassword || newPassword.length < 8}>Update password</Button>
           </form>
         </div>
-        <div className="mt-6 flex flex-wrap items-end gap-3 border-t border-white/10 pt-5">
-          <div className="mr-auto text-sm text-muted">{user?.email} · {user?.emailVerified ? 'Verified' : 'Not verified'}</div>
-          {!user?.emailVerified && <>
-            <Button size="sm" variant="secondary" leftIcon={<MailCheck className="size-4" />} disabled={accountBusy} onClick={async () => {
-              setAccountBusy(true); setAccountMessage('')
-              try { await requestEmailVerification(); setAccountMessage('Verification code sent to your email.') }
-              catch (error) { setAccountMessage(error instanceof Error ? error.message : 'Could not send verification code.') }
-              finally { setAccountBusy(false) }
-            }}>Send verification code</Button>
-            <Input label="Email code" value={verificationCode} onChange={(event) => setVerificationCode(event.target.value)} inputMode="numeric" maxLength={6} className="w-36" />
-            <Button size="sm" disabled={verificationCode.length !== 6 || accountBusy} onClick={async () => {
-              setAccountBusy(true); setAccountMessage('')
-              try { await confirmEmailVerification(verificationCode); const next = await useAuthStore.getState().hydrate(); void next; setAccountMessage('Email verified.') }
-              catch (error) { setAccountMessage(error instanceof Error ? error.message : 'Could not verify email.') }
-              finally { setAccountBusy(false) }
-            }}>Verify</Button>
-          </>}
-        </div>
+        )}
+        <p className="mt-3 text-xs text-muted">
+          Signed in as {user?.email}
+        </p>
         {accountMessage && <p role="status" className="mt-3 text-xs text-cyan">{accountMessage}</p>}
       </GlassCard>
 
@@ -313,7 +307,7 @@ export default function DashboardPage() {
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Recent Coding Submissions */}
         <GlassCard className="p-6 flex flex-col gap-5">
-          <div className="flex items-center justify-between border-b border-white/10 pb-3">
+          <div className="flex items-center justify-between border-b border-line pb-3">
             <div className="flex items-center gap-2">
               <Code className="size-4 text-cyan" />
               <h3 className="font-display text-base font-bold text-ink">Recent Code Submissions</h3>
@@ -337,7 +331,7 @@ export default function DashboardPage() {
               className="border-none bg-transparent shadow-none p-4"
             />
           ) : (
-            <div className="flex flex-col divide-y divide-white/5">
+            <div className="flex flex-col divide-y divide-line">
               {submissions.slice(0, 6).map((s) => (
                 <div key={s.id} className="flex items-center justify-between py-3">
                   <div className="flex items-center gap-3">
@@ -360,7 +354,7 @@ export default function DashboardPage() {
 
         {/* Recent Mock Interviews */}
         <GlassCard className="p-6 flex flex-col gap-5">
-          <div className="flex items-center justify-between border-b border-white/10 pb-3">
+          <div className="flex items-center justify-between border-b border-line pb-3">
             <div className="flex items-center gap-2">
               <Mic className="size-4 text-violet" />
               <h3 className="font-display text-base font-bold text-ink">Recent Mock Interviews</h3>
@@ -384,13 +378,13 @@ export default function DashboardPage() {
               className="border-none bg-transparent shadow-none p-4"
             />
           ) : (
-            <div className="flex flex-col divide-y divide-white/5">
+            <div className="flex flex-col divide-y divide-line">
               {interviews.slice(0, 6).map((item) => (
                 <div key={item.id} className="flex items-center justify-between py-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="font-display font-semibold text-xs text-ink">
-                        {item.topics.join(', ')}
+                        {(Array.isArray(item.topics) ? item.topics : []).join(', ') || 'Interview practice'}
                       </span>
                       <Badge tone={item.difficulty === 'Hard' ? 'bad' : item.difficulty === 'Medium' ? 'warn' : 'ok'}>
                         {item.difficulty}

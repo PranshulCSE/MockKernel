@@ -43,7 +43,7 @@ export default function AdminOverviewPage() {
   return (
     <div className="flex flex-col gap-8">
       {/* Metric KPI Tiles */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <GlassCard className="p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="font-mono text-xs uppercase tracking-wider text-muted">Total Problems</span>
@@ -131,7 +131,7 @@ export default function AdminOverviewPage() {
       </div>
 
       {/* Control Room Modules */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 sm:gap-6">
         {/* Problems Management */}
         <GlassCard strong className="p-6 flex flex-col justify-between">
           <div className="space-y-3">
@@ -143,7 +143,7 @@ export default function AdminOverviewPage() {
               Create, edit, and publish coding problems with multi-language starter code, test case suites, and constraints.
             </p>
           </div>
-          <div className="pt-6 border-t border-white/10 mt-6">
+          <div className="pt-6 mt-6 border-t border-line">
             <Link to="/admin/problems">
               <Button variant="primary" size="sm" rightIcon={<ArrowRight className="size-4" />}>
                 Manage Problems
@@ -163,7 +163,7 @@ export default function AdminOverviewPage() {
               Schedule competitions, trigger live start/end, monitor real-time participant submissions, and review plagiarism flags.
             </p>
           </div>
-          <div className="pt-6 border-t border-white/10 mt-6">
+          <div className="pt-6 mt-6 border-t border-line">
             <Link to="/admin/contests">
               <Button variant="secondary" size="sm" rightIcon={<ArrowRight className="size-4" />}>
                 Manage Contests
@@ -183,7 +183,7 @@ export default function AdminOverviewPage() {
               SuperAdmin role management: audit accounts, search users by email, and provision new administrator privileges.
             </p>
           </div>
-          <div className="pt-6 border-t border-white/10 mt-6">
+          <div className="pt-6 mt-6 border-t border-line">
             {isSuperAdmin ? (
               <Link to="/admin/users">
                 <Button variant="ghost" size="sm" rightIcon={<ArrowRight className="size-4" />}>

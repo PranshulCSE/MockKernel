@@ -370,11 +370,11 @@ export async function getAdminContest(req: Request, res: Response): Promise<void
 export async function updateContest(req: Request, res: Response): Promise<void> {
   const contest = await findContestOrThrow(req.params.id);
 
-  if (contest.status !== 'draft') {
+  if (contest.status === 'live') {
     throw new HttpError(
       409,
       'CONTEST_NOT_EDITABLE',
-      'Only draft contests can be edited.'
+      'Live contests cannot be edited. End the contest first.'
     );
   }
 

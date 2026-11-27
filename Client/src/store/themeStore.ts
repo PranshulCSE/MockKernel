@@ -11,46 +11,33 @@ interface ThemeStore {
 function getInitialTheme(): Theme {
   if (typeof window === 'undefined') return 'light'
   const saved = localStorage.getItem('mk_theme') as Theme | null
-  if (saved === 'dark' || saved === 'light') return saved
-  return 'light' // Default mode is light
+  return saved === 'dark' || saved === 'light' ? saved : 'light'
 }
 
-// Ensure DOM matches initially
+function applyTheme(theme: Theme): void {
+  if (typeof window === 'undefined') return
+  const root = document.documentElement
+  root.classList.toggle('dark', theme === 'dark')
+  root.classList.toggle('light', theme === 'light')
+  root.dataset.theme = theme
+  root.style.colorScheme = theme
+  localStorage.setItem('mk_theme', theme)
+}
+
 if (typeof window !== 'undefined') {
-  const initial = getInitialTheme()
-  if (initial === 'dark') {
-    document.documentElement.classList.add('dark')
-    document.documentElement.classList.remove('light')
-  } else {
-    document.documentElement.classList.remove('dark')
-    document.documentElement.classList.add('light')
-  }
+  applyTheme(getInitialTheme())
 }
 
 export const useThemeStore = create<ThemeStore>((set) => ({
   theme: getInitialTheme(),
-  setTheme: (theme: Theme) => {
-    localStorage.setItem('mk_theme', theme)
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark')
-      document.documentElement.classList.remove('light')
-    } else {
-      document.documentElement.classList.remove('dark')
-      document.documentElement.classList.add('light')
-    }
+  setTheme: (theme) => {
+    applyTheme(theme)
     set({ theme })
   },
   toggleTheme: () => {
     set((state) => {
       const next: Theme = state.theme === 'light' ? 'dark' : 'light'
-      localStorage.setItem('mk_theme', next)
-      if (next === 'dark') {
-        document.documentElement.classList.add('dark')
-        document.documentElement.classList.remove('light')
-      } else {
-        document.documentElement.classList.remove('dark')
-        document.documentElement.classList.add('light')
-      }
+      applyTheme(next)
       return { theme: next }
     })
   },

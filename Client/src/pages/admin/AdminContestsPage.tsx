@@ -20,6 +20,7 @@ import {
   useToast,
   type Column,
   EmptyState,
+  GlassCard,
 } from '../../components/ui'
 import {
   listAdminContests,
@@ -108,7 +109,10 @@ export default function AdminContestsPage() {
   }
 
   const openEditDrawer = async (contest: AdminContestItem) => {
-    if (contest.status !== 'draft') return
+    if (contest.status === 'live') {
+      toast.warn('Live contests cannot be edited. End the contest first.')
+      return
+    }
     try {
       const [detail, pRes] = await Promise.all([
         getAdminContest(contest.id),
@@ -239,6 +243,68 @@ export default function AdminContestsPage() {
     }
   }
 
+  const renderActions = (row: AdminContestItem, mobile = false) => {
+    const isBusy = busyActionId === row.id
+    return (
+      <div className={`flex flex-wrap items-center gap-2 ${mobile ? 'justify-start' : 'justify-end'}`}>
+        {row.status !== 'live' && (
+          <Button
+            variant="ghost"
+            size="sm"
+            leftIcon={<Pencil className="size-3.5" />}
+            onClick={() => void openEditDrawer(row)}
+          >
+            Edit
+          </Button>
+        )}
+
+        {row.status === 'draft' && (
+          <Button
+            variant="primary"
+            size="sm"
+            loading={isBusy}
+            leftIcon={<Play className="size-3.5" />}
+            onClick={() => void handleStartContest(row.id)}
+          >
+            Start Contest
+          </Button>
+        )}
+
+        {row.status === 'live' && (
+          <Button
+            variant="secondary"
+            size="sm"
+            className="text-bad hover:bg-bad/10 hover:text-bad"
+            loading={isBusy}
+            leftIcon={<Square className="size-3.5" />}
+            onClick={() => void handleEndContest(row.id)}
+          >
+            End Contest
+          </Button>
+        )}
+
+        {row.status !== 'draft' && (
+          <Button
+            variant="ghost"
+            size="sm"
+            loading={isBusy}
+            leftIcon={<RefreshCw className="size-3.5" />}
+            onClick={() => void handleRebuildLeaderboard(row.id)}
+            title="Rebuild Redis Leaderboard"
+          >
+            Rebuild
+          </Button>
+        )}
+
+        <Link to={`/admin/contests/${row.id}/live`}>
+          <Button variant="ghost" size="sm" leftIcon={<Eye className="size-3.5" />}>
+            Live Monitor
+          </Button>
+        </Link>
+      </div>
+    )
+  }
+
   const columns: Column<AdminContestItem & Record<string, unknown>>[] = [
     {
       key: 'title',
@@ -288,67 +354,7 @@ export default function AdminContestsPage() {
       key: 'actions',
       header: 'Lifecycle & Controls',
       align: 'right',
-      render: (row) => {
-        const isBusy = busyActionId === row.id
-        return (
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            {row.status === 'draft' && (
-              <Button
-                variant="ghost"
-                size="sm"
-                leftIcon={<Pencil className="size-3.5" />}
-                onClick={() => void openEditDrawer(row)}
-              >
-                Edit
-              </Button>
-            )}
-
-            {row.status === 'draft' && (
-              <Button
-                variant="primary"
-                size="sm"
-                loading={isBusy}
-                leftIcon={<Play className="size-3.5" />}
-                onClick={() => void handleStartContest(row.id)}
-              >
-                Start Contest
-              </Button>
-            )}
-
-            {row.status === 'live' && (
-              <Button
-                variant="secondary"
-                size="sm"
-                className="text-bad hover:bg-bad/10 hover:text-bad"
-                loading={isBusy}
-                leftIcon={<Square className="size-3.5" />}
-                onClick={() => void handleEndContest(row.id)}
-              >
-                End Contest
-              </Button>
-            )}
-
-            {row.status !== 'draft' && (
-              <Button
-                variant="ghost"
-                size="sm"
-                loading={isBusy}
-                leftIcon={<RefreshCw className="size-3.5" />}
-                onClick={() => void handleRebuildLeaderboard(row.id)}
-                title="Rebuild Redis Leaderboard"
-              >
-                Rebuild
-              </Button>
-            )}
-
-            <Link to={`/admin/contests/${row.id}/live`}>
-              <Button variant="ghost" size="sm" leftIcon={<Eye className="size-3.5" />}>
-                Live Monitor
-              </Button>
-            </Link>
-          </div>
-        )
-      },
+      render: (row) => renderActions(row),
     },
   ]
 
@@ -372,31 +378,106 @@ export default function AdminContestsPage() {
         </Button>
       </div>
 
-      {/* Contests Table */}
-      <DataTable
-        data={contests as unknown as Array<AdminContestItem & Record<string, unknown>>}
-        columns={columns}
-        isLoading={isLoading}
-        keyExtractor={(row) => row.id}
-        page={page}
-        totalPages={totalPages}
-        totalItems={totalItems}
-        pageSize={10}
-        onPageChange={(p) => setPage(p)}
-        emptyState={
-          <EmptyState
-            icon={Trophy}
-            heading="No contests created yet"
-            description="Create your first coding competition, select problems, and invite participants."
-            action={{
-              label: 'Create Contest',
-              onClick: openCreateDrawer,
-              leftIcon: <Plus className="size-4" />,
-            }}
-            className="border-none bg-transparent shadow-none"
-          />
-        }
-      />
+      {/* Desktop contests table */}
+      <div className="hidden md:block">
+        <DataTable
+          data={contests as unknown as Array<AdminContestItem & Record<string, unknown>>}
+          columns={columns}
+          isLoading={isLoading}
+          keyExtractor={(row) => row.id}
+          page={page}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          pageSize={10}
+          onPageChange={(p) => setPage(p)}
+          emptyState={
+            <EmptyState
+              icon={Trophy}
+              heading="No contests created yet"
+              description="Create your first coding competition, select problems, and invite participants."
+              action={{
+                label: 'Create Contest',
+                onClick: openCreateDrawer,
+                leftIcon: <Plus className="size-4" />,
+              }}
+              className="border-none bg-transparent shadow-none"
+            />
+          }
+        />
+      </div>
+
+      {/* Mobile contest cards */}
+      <div className="grid gap-3 md:hidden">
+        {isLoading ? (
+          <GlassCard className="p-6 text-center text-xs text-muted">Loading contests...</GlassCard>
+        ) : contests.length === 0 ? (
+          <GlassCard className="p-4">
+            <EmptyState
+              icon={Trophy}
+              heading="No contests created yet"
+              description="Create your first coding competition, select problems, and invite participants."
+              action={{
+                label: 'Create Contest',
+                onClick: openCreateDrawer,
+                leftIcon: <Plus className="size-4" />,
+              }}
+              className="border-none bg-transparent p-0 shadow-none"
+            />
+          </GlassCard>
+        ) : (
+          contests.map((row) => {
+            const tone = row.status === 'live' ? 'ok' : row.status === 'draft' ? 'warn' : 'run'
+            return (
+              <GlassCard key={row.id} className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="font-display text-sm font-semibold text-ink">{row.title}</h3>
+                    <p className="mt-0.5 line-clamp-2 text-xs text-muted">{row.description}</p>
+                  </div>
+                  <Badge tone={tone}>{row.status.toUpperCase()}</Badge>
+                </div>
+
+                <div className="mt-3 space-y-1.5 text-xs text-muted">
+                  <div className="flex items-center gap-1.5">
+                    <Calendar className="size-3 text-cyan" />
+                    <span>{new Date(row.startTime).toLocaleString()}</span>
+                  </div>
+                  <div className="pl-4.5 text-[11px]">to {new Date(row.endTime).toLocaleString()}</div>
+                  <div className="font-mono text-xs font-semibold text-ink">
+                    {row.problems?.length ?? 0} problems
+                  </div>
+                </div>
+
+                <div className="mt-3 border-t border-line pt-3">{renderActions(row, true)}</div>
+              </GlassCard>
+            )
+          })
+        )}
+
+        {!isLoading && contests.length > 0 && totalPages > 1 && (
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+            >
+              Previous
+            </Button>
+            <span className="text-xs text-muted">
+              Page {page} of {totalPages}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+            >
+              Next
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* Create Contest Drawer */}
       <Drawer
@@ -404,7 +485,7 @@ export default function AdminContestsPage() {
         onClose={() => setIsDrawerOpen(false)}
         width="lg"
         title={editingContestId ? 'Edit Contest' : 'Create New Contest'}
-        description="Set contest duration, choose problems, and assign point weightings. Only draft contests can be edited."
+        description="Set contest duration, choose problems, and assign point weightings. Live contests are read-only."
         footer={
           <>
             <Button variant="ghost" onClick={() => setIsDrawerOpen(false)}>
@@ -436,7 +517,7 @@ export default function AdminContestsPage() {
               value={formDescription}
               onChange={(e) => setFormDescription(e.target.value)}
               placeholder="Rules, scoring strategy, and penalties..."
-              className="w-full rounded-ctl border border-white/10 bg-black/30 p-3 font-sans text-xs text-ink placeholder-muted focus:border-cyan focus:outline-none"
+              className="w-full rounded-ctl border border-line bg-surface-soft p-3 font-sans text-xs text-ink placeholder-muted focus:border-cyan focus:outline-none"
             />
           </div>
 
@@ -447,7 +528,7 @@ export default function AdminContestsPage() {
                 type="datetime-local"
                 value={formStartTime}
                 onChange={(e) => setFormStartTime(e.target.value)}
-                className="h-11 rounded-ctl border border-white/10 bg-white/5 px-3 font-mono text-xs text-ink focus:border-cyan focus:outline-none"
+                className="h-11 rounded-ctl border border-line bg-surface-soft px-3 font-mono text-xs text-ink focus:border-cyan focus:outline-none"
               />
             </div>
 
@@ -457,14 +538,14 @@ export default function AdminContestsPage() {
                 type="datetime-local"
                 value={formEndTime}
                 onChange={(e) => setFormEndTime(e.target.value)}
-                className="h-11 rounded-ctl border border-white/10 bg-white/5 px-3 font-mono text-xs text-ink focus:border-cyan focus:outline-none"
+                className="h-11 rounded-ctl border border-line bg-surface-soft px-3 font-mono text-xs text-ink focus:border-cyan focus:outline-none"
               />
             </div>
           </div>
 
           {/* Problem Selector with Points */}
-          <div className="flex flex-col gap-3 rounded-ctl border border-white/10 bg-white/5 p-4">
-            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+          <div className="flex flex-col gap-3 rounded-ctl border border-line bg-surface-soft p-4">
+            <div className="flex items-center justify-between border-b border-line pb-2">
               <span className="font-display text-sm font-semibold text-ink">
                 Select Contest Problems ({selectedProblems.length})
               </span>
@@ -475,7 +556,7 @@ export default function AdminContestsPage() {
               </span>
             </div>
 
-            <div className="max-h-60 overflow-y-auto divide-y divide-white/5 pr-1">
+            <div className="max-h-60 overflow-y-auto divide-y divide-line pr-1">
               {availableProblems.length === 0 ? (
                 <p className="py-4 text-center font-sans text-xs text-muted">
                   No published problems found. Publish problems in Problems Manager first.
@@ -495,7 +576,7 @@ export default function AdminContestsPage() {
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => toggleProblemSelection(prob.id)}
-                          className="size-4 rounded border-white/20 bg-base text-cyan"
+                          className="size-4 rounded border-line bg-surface text-cyan"
                         />
                         <div>
                           <span className="font-sans text-xs font-semibold text-ink block">
@@ -517,7 +598,7 @@ export default function AdminContestsPage() {
                             onChange={(e) =>
                               updateProblemPoints(prob.id, parseInt(e.target.value, 10) || 100)
                             }
-                            className="w-20 rounded-ctl border border-white/10 bg-black/40 px-2 py-1 font-mono text-xs text-ink focus:border-cyan focus:outline-none"
+                            className="w-20 rounded-ctl border border-line bg-surface px-2 py-1 font-mono text-xs text-ink focus:border-cyan focus:outline-none"
                           />
                         </div>
                       )}

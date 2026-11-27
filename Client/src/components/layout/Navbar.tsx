@@ -40,7 +40,7 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-base/90 shadow-sm backdrop-blur-xl transition-all">
       <nav aria-label="Main" className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
-        <div className="flex min-w-0 items-center gap-6 lg:gap-8">
+        <div className="flex min-w-0 items-center gap-3 xl:gap-5">
           <Link
             to="/"
             aria-label="MockKernel home"
@@ -58,10 +58,10 @@ export function Navbar() {
                   to={l.to}
                   className={({ isActive }) =>
                     cn(
-                      'flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs lg:text-sm font-medium transition-all duration-150',
+                      'flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-medium transition-all duration-150 lg:text-sm',
                       isActive
                         ? 'bg-cyan/15 text-cyan border border-cyan/30 shadow-glow-cyan font-semibold'
-                        : 'text-muted hover:text-ink hover:bg-white/5 border border-transparent'
+                        : 'text-muted hover:text-ink hover:bg-surface-soft border border-transparent'
                     )
                   }
                 >
@@ -86,7 +86,7 @@ export function Navbar() {
               )}
               <Link
                 to="/dashboard"
-                className="flex items-center gap-2.5 rounded-full py-1 px-2 hover:bg-surface-soft transition-colors"
+                className="flex items-center gap-2.5 whitespace-nowrap rounded-full px-2 py-1 transition-colors hover:bg-surface-soft"
               >
                 <span
                   className="grid size-8 place-items-center rounded-full bg-cyan/20 border border-cyan/40 text-xs font-bold text-cyan shadow-glow-cyan"
@@ -102,7 +102,7 @@ export function Navbar() {
                 leftIcon={<LogOut className="size-4" />}
                 onClick={handleLogout}
                 aria-label="Log out"
-                className="text-xs text-muted hover:text-ink hover:bg-white/5"
+                className="whitespace-nowrap text-xs text-muted hover:bg-surface-soft hover:text-ink"
               >
                 Log out
               </Button>
@@ -111,7 +111,7 @@ export function Navbar() {
             <div className="flex items-center gap-2">
               <Link
                 to="/login"
-                className="rounded-full px-4 py-2 text-xs lg:text-sm font-medium text-muted hover:text-ink hover:bg-white/5 transition-colors"
+                className="rounded-full px-4 py-2 text-xs lg:text-sm font-medium text-muted hover:text-ink hover:bg-surface-soft transition-colors"
               >
                 Log in
               </Link>
@@ -154,11 +154,11 @@ export function Navbar() {
 
       {/* Mobile Collapsible Dropdown Menu */}
       {mobileMenuOpen && (
-        <div className="xl:hidden max-h-[calc(100vh-4rem)] overflow-y-auto border-b border-white/10 bg-base/95 backdrop-blur-2xl px-4 py-5 animate-fadeIn">
+        <div className="xl:hidden max-h-[calc(100vh-4rem)] overflow-y-auto border-b border-line bg-base/95 backdrop-blur-2xl px-4 py-5 animate-fadeIn">
           <div className="flex flex-col gap-4">
             {/* User status banner if logged in */}
             {user && (
-              <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-3">
+              <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
                 <div className="flex min-w-0 items-center gap-3">
                   <span className="grid size-9 shrink-0 place-items-center rounded-full bg-cyan/20 border border-cyan/40 text-sm font-bold text-cyan shadow-glow-cyan">
                     {user.name.charAt(0).toUpperCase()}
@@ -188,7 +188,7 @@ export function Navbar() {
                         'flex items-center gap-3 rounded-ctl px-3.5 py-2.5 text-sm font-medium transition-all',
                         isActive
                           ? 'bg-cyan/15 text-cyan border border-cyan/30 font-semibold'
-                          : 'text-muted hover:text-ink hover:bg-white/5 border border-transparent'
+                          : 'text-muted hover:text-ink hover:bg-surface-soft border border-transparent'
                       )
                     }
                   >
@@ -200,7 +200,7 @@ export function Navbar() {
             </ul>
 
             {/* Mobile Auth actions */}
-            <div className="border-t border-white/10 pt-3 flex flex-col gap-2">
+            <div className="border-t border-line pt-3 flex flex-col gap-2">
               {user ? (
                 <button
                   type="button"
@@ -218,7 +218,7 @@ export function Navbar() {
                   <Link
                     to="/login"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center justify-center rounded-ctl border border-white/15 bg-white/5 py-2.5 text-sm font-medium text-ink hover:bg-white/10 transition-colors"
+                    className="flex items-center justify-center rounded-ctl border border-line bg-surface-soft py-2.5 text-sm font-medium text-ink hover:bg-cyan/10 transition-colors"
                   >
                     Log in
                   </Link>

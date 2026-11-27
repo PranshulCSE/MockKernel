@@ -49,6 +49,7 @@ describe('Student stats endpoint', () => {
           solvedProblems: [{ count: 4 }],
           attemptedProblems: [{ count: 7 }],
           totalSubmissions: [{ count: 12 }],
+          acceptedSubmissions: [{ count: 5 }],
         },
       ]),
     } as never);
@@ -79,6 +80,7 @@ describe('Student stats endpoint', () => {
       solvedProblems: 4,
       attemptedProblems: 7,
       totalSubmissions: 12,
+      acceptedSubmissions: 5,
       contestsJoined: 3,
       interviewsStarted: 5,
       interviewsCompleted: 3,
@@ -105,6 +107,7 @@ describe('Student stats endpoint', () => {
           solvedProblems: [],
           attemptedProblems: [],
           totalSubmissions: [],
+          acceptedSubmissions: [],
         },
       ]),
     } as never);
@@ -124,6 +127,7 @@ describe('Student stats endpoint', () => {
       solvedProblems: 0,
       attemptedProblems: 0,
       totalSubmissions: 0,
+      acceptedSubmissions: 0,
       contestsJoined: 0,
       interviewsStarted: 0,
       interviewsCompleted: 0,

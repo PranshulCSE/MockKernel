@@ -3,7 +3,7 @@ import type { Config } from 'tailwindcss'
 // Theme C: Neon Glass (see Documentations/screens.md.pdf).
 // To change the theme later, only edit the tokens in this file and src/index.css.
 export default {
-  darkMode: 'class',
+  darkMode: ['class', '[data-theme="dark"]'],
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
