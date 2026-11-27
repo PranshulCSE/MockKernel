@@ -8,7 +8,7 @@
 
 | Package | Overall Status | Typecheck / Lint | Tests / Build (Verified 2026-11-12) |
 | --- | --- | --- | --- |
-| **`Server/`** | ~90–95% complete (core APIs, auth, queues, sockets, AI, plagiarism, rate limiter built) | `npm run typecheck` passed | `8` unit tests passed; `30` `supertest` HTTP tests could not bind local sockets in sandbox (`EPERM 127.0.0.1`) — run `npm --prefix Server test` locally to verify |
+| *w*`Server/`** | ~90–95% complete (core APIs, auth, queues, sockets, AI, plagiarism, rate limiter built) | `npm run typecheck` passed | `8` unit tests passed; `30` `supertest` HTTP tests could not bind local sockets in sandbox (`EPERM 127.0.0.1`) — run `npm --prefix Server test` locally to verify |
 | **`Worker/`** | ~90% complete (BullMQ consumer + Judge0 polling client built; needs 10s TLE Timeout Guard alignment) | `npm run typecheck` passed | `npm test` passed (`3` files, `12/12` tests) |
 | **`Client/`** | ~15–20% complete (Theme C Neon Glass shell, auth UI with `localStorage` mock, placeholder pages) | `npm run lint` passed | `npm run build` **fails** (`VerdictBadge.tsx` missing `RUNNING` and `INTERNAL_ERROR`) |
 | **DevOps / Infra** | ~5% complete (`.env.example` files exist; no `docker-compose.yml`, `.github/workflows/`, Dockerfiles, or Judge0 setup) | — | — |
