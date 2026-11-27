@@ -74,8 +74,7 @@ export function Navbar() {
         </div>
 
         {/* Right Desktop User & Auth Area */}
-        <div className="hidden xl:flex items-center gap-3">
-          <ThemeToggle />
+        <div className="hidden shrink-0 items-center gap-3 xl:flex">
           {user ? (
             <div className="flex items-center gap-3">
               {isAdmin && (
@@ -123,11 +122,12 @@ export function Navbar() {
               </Link>
             </div>
           )}
+          <span className="mx-0.5 h-6 w-px shrink-0 bg-line" aria-hidden />
+          <ThemeToggle />
         </div>
 
-        {/* Mobile Hamburger Toggle Button */}
-        <div className="flex xl:hidden items-center gap-2">
-          <ThemeToggle />
+        {/* Mobile avatar + theme + menu controls */}
+        <div className="flex shrink-0 items-center gap-2 xl:hidden">
           {user && (
             <Link
               to="/dashboard"
@@ -140,6 +140,7 @@ export function Navbar() {
               </span>
             </Link>
           )}
+          <ThemeToggle />
           <button
             type="button"
             onClick={() => setMobileMenuOpen((prev) => !prev)}
