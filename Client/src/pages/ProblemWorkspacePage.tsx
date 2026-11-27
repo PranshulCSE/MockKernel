@@ -43,29 +43,62 @@ const LANGUAGES = [
 ]
 
 const DEFAULT_STARTER_CODES: Record<string, string> = {
-  python: `def solution():
+  python: `import sys
+
+def solve(data):
+    # data is the raw stdin as a string
     # Write your solution here
-    pass
+    return ""
+
+if __name__ == "__main__":
+    print(solve(sys.stdin.read().rstrip()))
 `,
   cpp: `#include <iostream>
-#include <vector>
-
+#include <iterator>
+#include <string>
 using namespace std;
 
-int main() {
+string solve(const string& input) {
+    // input is the raw stdin
     // Write your solution here
+    return "";
+}
+
+int main() {
+    string input((istreambuf_iterator<char>(cin)), istreambuf_iterator<char>());
+    cout << solve(input) << endl;
     return 0;
 }
 `,
-  java: `public class Solution {
-    public static void main(String[] args) {
+  java: `import java.util.Scanner;
+
+public class Main {
+    static String solve(String input) {
+        // input is the raw stdin
         // Write your solution here
+        return "";
+    }
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        StringBuilder input = new StringBuilder();
+        while (scanner.hasNextLine()) {
+            if (input.length() > 0) input.append(System.lineSeparator());
+            input.append(scanner.nextLine());
+        }
+        System.out.println(solve(input.toString()));
     }
 }
 `,
-  javascript: `function solution() {
-    // Write your solution here
+  javascript: `const fs = require('fs')
+
+function solve(input) {
+  // input is the raw stdin as a string
+  // Write your solution here
+  return ''
 }
+
+console.log(solve(fs.readFileSync(0, 'utf8').trimEnd()))
 `,
 }
 

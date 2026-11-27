@@ -84,6 +84,26 @@ function defaultSleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * Judge0 base64-encodes free-form output fields when base64_encoded=true.
+ * Some compiler diagnostics are not valid UTF-8 when returned raw, so the
+ * Worker always requests encoded output and decodes it locally. The guard
+ * keeps plain-text responses usable for mocks or proxies that ignore the flag.
+ */
+function decodeJudge0Output(value: string | null | undefined): string | null | undefined {
+  if (value === null || value === undefined || value === '') {
+    return value;
+  }
+
+  const compact = value.replace(/\s/g, '');
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(compact) || compact.length % 4 !== 0) {
+    return value;
+  }
+
+  const decoded = Buffer.from(compact, 'base64').toString('utf8');
+  return decoded.includes('\uFFFD') ? value : decoded;
+}
+
 export class Judge0Service {
   private client: AxiosInstance;
   private pollIntervalMs: number;
@@ -301,11 +321,17 @@ export class Judge0Service {
       let data: Judge0Response;
       try {
         const response = await this.getWithDeadline<Judge0Response>(
-          `/submissions/${token}?base64_encoded=false`,
+          `/submissions/${token}?base64_encoded=true`,
           deadline,
           token
         );
-        data = response.data;
+        data = {
+          ...response.data,
+          stdout: decodeJudge0Output(response.data.stdout),
+          stderr: decodeJudge0Output(response.data.stderr),
+          compile_output: decodeJudge0Output(response.data.compile_output),
+          message: decodeJudge0Output(response.data.message),
+        };
       } catch (error) {
         throw this.wrapAxiosError(error, 'pollSubmission');
       }
