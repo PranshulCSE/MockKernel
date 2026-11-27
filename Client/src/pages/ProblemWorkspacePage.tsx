@@ -424,7 +424,7 @@ export default function ProblemWorkspacePage() {
   const leftPanelContent = (
     <div className="workspace-panel flex h-full flex-col overflow-hidden border-r border-line">
       {/* Top Header / Tabs */}
-      <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-2.5">
+      <div className="flex shrink-0 items-center justify-between border-b border-line px-4 py-2.5">
         <button
           onClick={() => handleSafeNavigation('/practice')}
           className="flex items-center gap-1.5 text-xs text-muted hover:text-ink transition-colors focus-visible:outline-none"
@@ -433,7 +433,7 @@ export default function ProblemWorkspacePage() {
           Catalog
         </button>
 
-        <div className="flex rounded-lg bg-white/5 p-1">
+        <div className="flex rounded-lg bg-surface-soft p-1">
           <button
             onClick={() => setLeftTab('statement')}
             className={cn(
@@ -499,7 +499,7 @@ export default function ProblemWorkspacePage() {
 
             {/* Constraints */}
             {problem.constraints && (
-              <div className="flex flex-col gap-2 rounded-card border border-white/5 bg-white/[0.02] p-4">
+              <div className="flex flex-col gap-2 rounded-card border border-line bg-surface-soft/50 p-4">
                 <h3 className="font-semibold text-ink text-xs uppercase tracking-wider text-muted">
                   Constraints
                 </h3>
@@ -518,7 +518,7 @@ export default function ProblemWorkspacePage() {
                 {problem.sampleTestCases.map((tc, idx) => (
                   <div
                     key={tc.id || idx}
-                    className="flex flex-col gap-2 rounded-card border border-white/10 bg-white/5 p-4"
+                    className="flex flex-col gap-2 rounded-card border border-line bg-surface-soft p-4"
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-cyan font-mono">
@@ -615,7 +615,7 @@ export default function ProblemWorkspacePage() {
         <select
           value={language}
           onChange={(e) => setLanguage(e.target.value)}
-          className="rounded-ctl border border-white/10 bg-white/5 px-3 py-1 text-xs font-mono text-ink focus-visible:outline-none focus-visible:border-cyan"
+          className="rounded-ctl border border-line bg-surface-soft px-3 py-1 text-xs font-mono text-ink focus-visible:outline-none focus-visible:border-cyan"
         >
           {LANGUAGES.map((l) => (
             <option key={l.id} value={l.id} className="bg-base text-ink">
@@ -681,7 +681,7 @@ export default function ProblemWorkspacePage() {
               size="sm"
               onClick={() => handleExecute('run')}
               disabled={executionState.status === 'PENDING' || executionState.status === 'RUNNING'}
-              className="h-8 border-white/15 bg-white/5 text-xs text-ink hover:bg-white/10 hover:text-cyan"
+              className="h-8 border-line bg-surface-soft text-xs text-ink hover:bg-surface hover:text-cyan"
             >
               <Play className="size-3 mr-1 text-cyan fill-cyan" />
               Run

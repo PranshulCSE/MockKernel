@@ -430,7 +430,7 @@ Input and Output formats follow standard competitive programming conventions.`,
   // Left panel problem statement
   const leftPanelContent = (
     <div className="workspace-panel flex h-full flex-col overflow-hidden border-r border-line">
-      <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-2.5">
+      <div className="flex shrink-0 items-center justify-between border-b border-line px-4 py-2.5">
         <span className="text-xs font-mono text-cyan uppercase tracking-wider font-semibold">
           Problem {String.fromCharCode(65 + activeProblemIndex)}: {activeProblemRef?.points ?? 100} Points
         </span>
@@ -460,7 +460,7 @@ Input and Output formats follow standard competitive programming conventions.`,
             </div>
 
             {currentProblem.constraints && (
-              <div className="flex flex-col gap-2 rounded-card border border-white/5 bg-white/[0.02] p-4">
+              <div className="flex flex-col gap-2 rounded-card border border-line bg-surface-soft/50 p-4">
                 <h3 className="font-semibold text-xs uppercase tracking-wider text-muted">
                   Constraints
                 </h3>
@@ -478,7 +478,7 @@ Input and Output formats follow standard competitive programming conventions.`,
                 {currentProblem.sampleTestCases.map((tc, idx) => (
                   <div
                     key={tc.id || idx}
-                    className="flex flex-col gap-2 rounded-card border border-white/10 bg-white/5 p-4"
+                    className="flex flex-col gap-2 rounded-card border border-line bg-surface-soft p-4"
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-cyan font-mono">
@@ -527,7 +527,7 @@ Input and Output formats follow standard competitive programming conventions.`,
         <select
           value={language}
           onChange={(e) => setLanguage(e.target.value)}
-          className="rounded-ctl border border-white/10 bg-white/5 px-3 py-1 text-xs font-mono text-ink focus-visible:border-cyan focus-visible:outline-none"
+          className="rounded-ctl border border-line bg-surface-soft px-3 py-1 text-xs font-mono text-ink focus-visible:border-cyan focus-visible:outline-none"
         >
           {LANGUAGES.map((l) => (
             <option key={l.id} value={l.id} className="bg-base text-ink">
@@ -570,7 +570,7 @@ Input and Output formats follow standard competitive programming conventions.`,
               size="sm"
               onClick={() => handleExecute('run')}
               disabled={executionState.status === 'PENDING' || executionState.status === 'RUNNING'}
-              className="h-8 border-white/15 bg-white/5 text-xs text-ink hover:bg-white/10"
+              className="h-8 border-line bg-surface-soft text-xs text-ink hover:bg-surface"
             >
               <Play className="size-3 mr-1 text-cyan fill-cyan" />
               Run
@@ -599,7 +599,7 @@ Input and Output formats follow standard competitive programming conventions.`,
             onClick={() => setConsoleTab('testcases')}
             className={cn(
               'rounded-md px-3 py-1 text-xs font-medium transition-colors',
-              consoleTab === 'testcases' ? 'bg-white/10 text-cyan' : 'text-muted hover:text-ink'
+              consoleTab === 'testcases' ? 'bg-surface-soft text-cyan border border-cyan/30' : 'text-muted hover:text-ink'
             )}
           >
             Sample Tests
@@ -608,7 +608,7 @@ Input and Output formats follow standard competitive programming conventions.`,
             onClick={() => setConsoleTab('output')}
             className={cn(
               'rounded-md px-3 py-1 text-xs font-medium transition-colors',
-              consoleTab === 'output' ? 'bg-white/10 text-cyan' : 'text-muted hover:text-ink'
+              consoleTab === 'output' ? 'bg-surface-soft text-cyan border border-cyan/30' : 'text-muted hover:text-ink'
             )}
           >
             Execution Verdict

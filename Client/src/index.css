@@ -10,17 +10,17 @@
   :root,
   html[data-theme='light'] {
     color-scheme: light;
-    --color-base: 244 247 252;
+    --color-base: 240 243 249;
     --color-ink: 24 32 54;
-    --color-muted: 82 96 122;
-    --color-surface: 250 251 254;
-    --color-surface-soft: 236 242 250;
-    --color-line: 209 220 236;
-    --color-workspace: 240 245 251;
-    --color-editor: 247 249 253;
+    --color-muted: 74 85 110;
+    --color-surface: 245 247 253;
+    --color-surface-soft: 232 238 248;
+    --color-line: 200 212 232;
+    --color-workspace: 237 241 250;
+    --color-editor: 243 246 252;
     --color-editor-ink: 30 41 59;
     --color-editor-line: 100 116 139;
-    --color-console-head: 232 239 248;
+    --color-console-head: 228 235 246;
   }
 
   :root.dark,
@@ -90,22 +90,26 @@
   .workspace-editor > section,
   .workspace-editor .monaco-editor,
   .workspace-editor .monaco-editor-background,
-  .workspace-editor .monaco-editor .margin { background-color: rgb(var(--color-editor) / 1) !important; }
+  .workspace-editor .margin { background-color: rgb(var(--color-editor) / 1) !important; }
+  .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
 }
 
 /* Light-mode translation for legacy translucent utility classes. */
-:root:not(.dark):not([data-theme='dark']) [class~="bg-white/5"] { background-color: rgb(59 130 246 / 0.055) !important; }
-:root:not(.dark):not([data-theme='dark']) [class~="bg-white/10"] { background-color: rgb(59 130 246 / 0.085) !important; }
+:root:not(.dark):not([data-theme='dark']) [class~="bg-white/5"] { background-color: rgb(99 102 241 / 0.06) !important; }
+:root:not(.dark):not([data-theme='dark']) [class~="bg-white/10"] { background-color: rgb(99 102 241 / 0.09) !important; }
 :root:not(.dark):not([data-theme='dark']) [class~="bg-white/15"] { background-color: rgb(124 58 237 / 0.1) !important; }
-:root:not(.dark):not([data-theme='dark']) [class~="bg-white/20"] { background-color: rgb(99 102 241 / 0.16) !important; }
-:root:not(.dark):not([data-theme='dark']) [class~="bg-white/[0.02]"] { background-color: rgb(59 130 246 / 0.03) !important; }
+:root:not(.dark):not([data-theme='dark']) [class~="bg-white/20"] { background-color: rgb(99 102 241 / 0.14) !important; }
+:root:not(.dark):not([data-theme='dark']) [class~="bg-white/[0.02]"] { background-color: rgb(59 130 246 / 0.04) !important; }
 :root:not(.dark):not([data-theme='dark']) [class~="border-white/5"],
 :root:not(.dark):not([data-theme='dark']) [class~="border-white/10"],
 :root:not(.dark):not([data-theme='dark']) [class~="border-white/15"],
-:root:not(.dark):not([data-theme='dark']) [class~="border-white/20"] { border-color: rgb(99 102 241 / 0.2) !important; }
-:root:not(.dark):not([data-theme='dark']) [class~="divide-white/5"] { border-color: rgb(99 102 241 / 0.12) !important; }
+:root:not(.dark):not([data-theme='dark']) [class~="border-white/20"] { border-color: rgb(var(--color-line)) !important; }
+:root:not(.dark):not([data-theme='dark']) [class~="divide-white/5"] { border-color: rgb(var(--color-line) / 0.5) !important; }
+:root:not(.dark):not([data-theme='dark']) [class~="bg-black/20"],
 :root:not(.dark):not([data-theme='dark']) [class~="bg-black/30"],
-:root:not(.dark):not([data-theme='dark']) [class~="bg-black/40"] { background-color: rgb(var(--color-editor) / 0.96) !important; }
+:root:not(.dark):not([data-theme='dark']) [class~="bg-black/40"] { background-color: rgb(var(--color-surface-soft)) !important; }
+:root:not(.dark):not([data-theme='dark']) [class~="bg-black/50"] { background-color: rgb(var(--color-surface)) !important; }
 :root:not(.dark):not([data-theme='dark']) [class~="bg-black/70"],
 :root:not(.dark):not([data-theme='dark']) [class~="bg-black/75"] { background-color: rgb(15 23 42 / 0.38) !important; }
 
@@ -126,6 +130,24 @@
 @keyframes brand-shift {
   0%, 100% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
+}
+
+/* Fade-in animation for cards and modals. */
+.animate-fadeIn {
+  animation: fadeIn 0.4s ease-out both;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Accent glow pulse for interactive elements. */
+.accent-glow {
+  animation: accentPulse 3s ease-in-out infinite;
+}
+@keyframes accentPulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(124, 58, 237, 0.2), 0 0 24px rgba(6, 182, 212, 0.1); }
+  50% { box-shadow: 0 0 20px rgba(124, 58, 237, 0.35), 0 0 40px rgba(6, 182, 212, 0.2); }
 }
 
 @media (prefers-reduced-motion: reduce) {

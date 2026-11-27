@@ -25,13 +25,24 @@ export function Input({
   const message = error ?? hint
 
   return (
-    <div className={cn('flex flex-col gap-1.5', className)}>
-      <label htmlFor={inputId} className="text-sm font-medium text-ink">
+    <div className={cn('flex w-full flex-col gap-1.5', className)}>
+      <label htmlFor={inputId} className="flex items-center gap-2 text-sm font-medium text-ink">
         {label}
       </label>
-      <div className="relative">
+      <div
+        className={cn(
+          'group relative flex items-center rounded-ctl border bg-surface-soft',
+          'transition-all duration-200 focus-within:ring-2',
+          error
+            ? 'border-bad/70 focus-within:border-bad focus-within:ring-bad/20'
+            : 'border-line hover:border-cyan/40 focus-within:border-cyan/70 focus-within:ring-cyan/20',
+        )}
+      >
         {leftIcon && (
-          <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute left-3.5 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center text-cyan/80"
+          >
             {leftIcon}
           </span>
         )}
@@ -40,24 +51,24 @@ export function Input({
           aria-invalid={error ? true : undefined}
           aria-describedby={message ? messageId : undefined}
           className={cn(
-            'h-11 w-full rounded-ctl border bg-white/5 text-sm text-ink placeholder:text-muted/70',
-            'backdrop-blur-xl transition-colors duration-200',
-            'focus-visible:border-cyan/60 focus-visible:ring-1 focus-visible:ring-cyan/60 focus-visible:ring-offset-0',
-            leftIcon ? 'pl-10' : 'pl-4',
-            rightSlot ? 'pr-11' : 'pr-4',
-            error ? 'border-bad/70' : 'border-white/10 hover:border-white/20',
+            'h-11 w-full rounded-ctl bg-transparent text-sm text-ink outline-none',
+            'placeholder:text-muted/70 focus-visible:ring-0 focus-visible:ring-offset-0',
+            leftIcon ? 'pl-11' : 'pl-4',
+            rightSlot ? 'pr-12' : 'pr-4',
           )}
           {...rest}
         />
         {rightSlot && (
-          <span className="absolute right-2 top-1/2 -translate-y-1/2">{rightSlot}</span>
+          <span className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center justify-center text-muted">
+            {rightSlot}
+          </span>
         )}
       </div>
       {message && (
         <p
           id={messageId}
           role={error ? 'alert' : undefined}
-          className={cn('text-xs', error ? 'text-bad' : 'text-muted')}
+          className={cn('text-xs leading-5', error ? 'text-bad' : 'text-muted')}
         >
           {message}
         </p>

@@ -98,7 +98,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
             <h1 className="text-2xl font-bold">{t.title}</h1>
             <p className="mt-1 text-sm text-muted">{t.sub}</p>
 
-            <div className="mt-6">
+            <div className="mt-6 flex min-h-14 w-full items-center justify-center">
               <GoogleButton
                 label={t.google}
                 mode={mode}
@@ -109,9 +109,9 @@ export function AuthForm({ mode }: { mode: Mode }) {
             </div>
 
             <div className="my-6 flex items-center gap-3 text-xs text-muted" role="separator">
-              <span className="h-px flex-1 bg-white/10" />
+              <span className="h-px flex-1 bg-line" />
               or use email
-              <span className="h-px flex-1 bg-white/10" />
+              <span className="h-px flex-1 bg-line" />
             </div>
 
             <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
@@ -127,7 +127,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   error={errors.name}
-                  leftIcon={<User className="size-4" />}
+                  leftIcon={<User className="size-[18px]" />}
                 />
               )}
               <Input
@@ -138,17 +138,18 @@ export function AuthForm({ mode }: { mode: Mode }) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 error={errors.email}
-                leftIcon={<Mail className="size-4" />}
+                leftIcon={<Mail className="size-[18px]" />}
               />
               <Input
                 label="Password"
                 type={showPassword ? 'text' : 'password'}
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                placeholder={mode === 'login' ? 'Enter your password' : 'At least 8 characters'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 error={errors.password}
                 hint={mode === 'signup' ? 'At least 8 characters.' : undefined}
-                leftIcon={<Lock className="size-4" />}
+                leftIcon={<Lock className="size-[18px]" />}
                 rightSlot={
                   <button
                     type="button"

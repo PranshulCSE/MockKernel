@@ -11,6 +11,9 @@ import {
   Sparkles,
   ExternalLink,
   UserRound,
+  Lock,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { GlassCard, Button, Badge, VerdictBadge, Skeleton, EmptyState } from '../components/ui'
@@ -26,6 +29,8 @@ export default function DashboardPage() {
   const [profileName, setProfileName] = useState(user?.name || '')
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
   const [accountMessage, setAccountMessage] = useState('')
   const [accountBusy, setAccountBusy] = useState(false)
   const [showAccountSettings, setShowAccountSettings] = useState(false)
@@ -149,7 +154,13 @@ export default function DashboardPage() {
             catch (error) { setAccountMessage(error instanceof Error ? error.message : 'Could not update profile.') }
             finally { setAccountBusy(false) }
           }}>
-            <Input label="Display name" value={profileName} onChange={(event) => setProfileName(event.target.value)} autoComplete="name" />
+            <Input
+              label="Display name"
+              value={profileName}
+              onChange={(event) => setProfileName(event.target.value)}
+              autoComplete="name"
+              leftIcon={<UserRound className="size-[18px]" />}
+            />
             <Button type="submit" size="sm" loading={accountBusy}>Save profile</Button>
           </form>
           <form className="space-y-3" onSubmit={async (event) => {
@@ -158,8 +169,42 @@ export default function DashboardPage() {
             catch (error) { setAccountMessage(error instanceof Error ? error.message : 'Could not update password.') }
             finally { setAccountBusy(false) }
           }}>
-            <Input label="Current password" type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
-            <Input label="New password" type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
+            <Input
+              label="Current password"
+              type={showCurrentPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+              leftIcon={<Lock className="size-[18px]" />}
+              rightSlot={
+                <button
+                  type="button"
+                  aria-label={showCurrentPassword ? 'Hide current password' : 'Show current password'}
+                  onClick={() => setShowCurrentPassword((v) => !v)}
+                  className="grid size-8 place-items-center rounded-full text-muted hover:text-ink"
+                >
+                  {showCurrentPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              }
+            />
+            <Input
+              label="New password"
+              type={showNewPassword ? 'text' : 'password'}
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+              leftIcon={<Lock className="size-[18px]" />}
+              rightSlot={
+                <button
+                  type="button"
+                  aria-label={showNewPassword ? 'Hide new password' : 'Show new password'}
+                  onClick={() => setShowNewPassword((v) => !v)}
+                  className="grid size-8 place-items-center rounded-full text-muted hover:text-ink"
+                >
+                  {showNewPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              }
+            />
             <Button type="submit" size="sm" loading={accountBusy} disabled={!currentPassword || newPassword.length < 8}>Update password</Button>
           </form>
         </div>

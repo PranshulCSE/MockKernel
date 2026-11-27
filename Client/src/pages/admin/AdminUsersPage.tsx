@@ -1,5 +1,16 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, Search, ShieldCheck, UserPlus, Users } from 'lucide-react'
+import {
+  Plus,
+  Search,
+  ShieldCheck,
+  UserPlus,
+  Users,
+  Mail,
+  Lock,
+  UserRound,
+  Eye,
+  EyeOff,
+} from 'lucide-react'
 import {
   Button,
   Badge,
@@ -37,6 +48,7 @@ export default function AdminUsersPage() {
   const [adminName, setAdminName] = useState('')
   const [adminEmail, setAdminEmail] = useState('')
   const [adminPassword, setAdminPassword] = useState('')
+  const [showAdminPassword, setShowAdminPassword] = useState(false)
 
   const isSuperAdmin = user?.role === 'superadmin'
 
@@ -172,7 +184,7 @@ export default function AdminUsersPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && void loadUsers(1, search, roleFilter)}
-              className="w-full rounded-full border border-white/10 bg-white/5 py-2 pl-10 pr-4 text-xs font-sans text-ink placeholder-muted focus:border-cyan focus:outline-none focus:ring-1 focus:ring-cyan"
+              className="w-full rounded-full border border-line bg-surface-soft py-2 pl-10 pr-4 text-xs font-sans text-ink placeholder:text-muted focus:border-cyan focus:outline-none focus:ring-1 focus:ring-cyan/40"
             />
           </div>
 
@@ -183,7 +195,7 @@ export default function AdminUsersPage() {
               setRoleFilter(r)
               void loadUsers(1, search, r)
             }}
-            className="h-9 rounded-full border border-white/10 bg-white/5 px-3 font-sans text-xs text-ink focus:border-cyan focus:outline-none"
+            className="h-9 rounded-full border border-line bg-surface-soft px-3 font-sans text-xs text-ink focus:border-cyan focus:outline-none focus:ring-1 focus:ring-cyan/40"
           >
             <option value="all" className="bg-base text-ink">
               All Roles
@@ -258,6 +270,7 @@ export default function AdminUsersPage() {
             placeholder="e.g. Jane Doe"
             value={adminName}
             onChange={(e) => setAdminName(e.target.value)}
+            leftIcon={<UserRound className="size-[18px]" />}
           />
           <Input
             type="email"
@@ -265,13 +278,25 @@ export default function AdminUsersPage() {
             placeholder="admin@mockkernel.dev"
             value={adminEmail}
             onChange={(e) => setAdminEmail(e.target.value)}
+            leftIcon={<Mail className="size-[18px]" />}
           />
           <Input
-            type="password"
+            type={showAdminPassword ? 'text' : 'password'}
             label="Initial Password (min 8 characters)"
             placeholder="••••••••"
             value={adminPassword}
             onChange={(e) => setAdminPassword(e.target.value)}
+            leftIcon={<Lock className="size-[18px]" />}
+            rightSlot={
+              <button
+                type="button"
+                aria-label={showAdminPassword ? 'Hide password' : 'Show password'}
+                onClick={() => setShowAdminPassword((v) => !v)}
+                className="grid size-8 place-items-center rounded-full text-muted hover:text-ink"
+              >
+                {showAdminPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            }
           />
         </div>
       </Modal>
