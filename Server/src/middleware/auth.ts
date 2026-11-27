@@ -10,6 +10,7 @@ export interface AuthUser {
   role: UserRole;
   email: string;
   name: string;
+  emailVerified: boolean;
 }
 
 export interface AuthenticatedRequest extends Request {
@@ -58,7 +59,7 @@ export async function resolveUserFromToken(token: string): Promise<AuthUser> {
   }
 
   const user = await User.findById(decoded.userId)
-    .select('name email role')
+    .select('name email role emailVerified')
     .lean()
     .exec();
 
@@ -75,6 +76,7 @@ export async function resolveUserFromToken(token: string): Promise<AuthUser> {
     role: user.role,
     email: user.email,
     name: user.name,
+    emailVerified: user.emailVerified,
   };
 }
 

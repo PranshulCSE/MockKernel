@@ -78,3 +78,16 @@ export async function logout(): Promise<void> {
     // Best effort on logout
   }
 }
+
+export async function updateAccount(payload: { name?: string; currentPassword?: string; newPassword?: string }): Promise<AuthUser> {
+  const res = await client.patch<{ data: { user: AuthUser } }>('/api/auth/me', payload)
+  return res.data.user
+}
+
+export async function requestEmailVerification(): Promise<void> {
+  await client.post('/api/auth/me/verify-email')
+}
+
+export async function confirmEmailVerification(code: string): Promise<void> {
+  await client.post('/api/auth/me/verify-email/confirm', { code })
+}

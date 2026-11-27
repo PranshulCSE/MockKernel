@@ -1,5 +1,5 @@
 import { NavLink, Outlet, Link } from 'react-router'
-import { LayoutDashboard, Code, Trophy, Users, Shield, ArrowLeft, ShieldAlert } from 'lucide-react'
+import { LayoutDashboard, Code, Trophy, Users, ArrowLeft, Shield, ShieldAlert } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { cn } from '../../lib/cn'
 import { Badge } from '../../components/ui'
@@ -19,57 +19,59 @@ export default function AdminLayout() {
   ]
 
   return (
-    <div className="flex flex-col gap-8 max-w-7xl mx-auto pb-24">
-      {/* Admin Suite Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-6">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5">
-            <Shield className="size-5 text-cyan" />
-            <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">
-              MockKernel Control Room
+    <div className="mx-auto flex w-full max-w-7xl flex-col pb-16 sm:pb-24">
+      <div className="sticky top-16 z-30 -mx-4 border-b border-line bg-base/95 px-4 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="grid size-8 shrink-0 place-items-center rounded-full border border-cyan/25 bg-cyan/10">
+              <Shield className="size-4 text-cyan" />
+            </span>
+            <h1 className="truncate font-display text-lg font-bold text-ink sm:text-2xl">
+              Control Room
             </h1>
             <Badge tone={isSuperAdmin ? 'flag' : 'run'}>
               {isSuperAdmin ? 'SuperAdmin' : 'Admin'}
             </Badge>
           </div>
-          <p className="font-sans text-xs text-muted">
-            Platform governance, problem authoring, live contest monitoring & plagiarism audits.
-          </p>
+
+          <Link
+            to="/dashboard"
+            className="flex shrink-0 items-center gap-2 rounded-full border border-line bg-surface-soft px-3 py-2 text-xs font-medium text-muted transition-colors hover:bg-cyan/10 hover:text-ink"
+          >
+            <ArrowLeft className="size-3.5" />
+            <span>Student Portal</span>
+          </Link>
         </div>
 
-        <Link
-          to="/dashboard"
-          className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 font-sans text-xs font-medium text-muted hover:text-ink hover:bg-white/10 transition-colors"
-        >
-          <ArrowLeft className="size-3.5" />
-          <span>Back to Student Portal</span>
-        </Link>
+        <p className="mt-1.5 hidden text-xs text-muted sm:block">
+          Platform governance, authoring, live monitoring and audits.
+        </p>
+
+        <nav aria-label="Admin Navigation" className="mt-3 flex items-center gap-2 overflow-x-auto pb-1">
+          {navLinks.map((l) => (
+            <NavLink
+              key={l.to}
+              to={l.to}
+              end={l.end}
+              className={({ isActive }) =>
+                cn(
+                  'flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold transition-colors sm:px-4',
+                  isActive
+                    ? 'bg-brand text-ink shadow-glow'
+                    : 'text-muted hover:bg-surface-soft hover:text-ink',
+                )
+              }
+            >
+              <l.icon className="size-3.5" />
+              <span>{l.label}</span>
+            </NavLink>
+          ))}
+        </nav>
       </div>
 
-      {/* Admin Tab Navigation */}
-      <nav aria-label="Admin Navigation" className="flex items-center gap-2 border-b border-white/10 pb-2">
-        {navLinks.map((l) => (
-          <NavLink
-            key={l.to}
-            to={l.to}
-            end={l.end}
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold font-sans transition-colors',
-                isActive
-                  ? 'bg-brand text-ink shadow-glow'
-                  : 'text-muted hover:text-ink hover:bg-white/5',
-              )
-            }
-          >
-            <l.icon className="size-3.5" />
-            <span>{l.label}</span>
-          </NavLink>
-        ))}
-      </nav>
-
-      {/* Subpage content */}
-      <Outlet />
+      <div className="pt-6">
+        <Outlet />
+      </div>
     </div>
   )
 }

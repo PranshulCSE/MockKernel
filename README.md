@@ -1,6 +1,6 @@
 # MockKernel 🧠⚡
 
-**MockKernel** is a full-stack, AI-powered mock interview and competitive coding platform. Designed to simulate real-world technical screening, it bridges the gap between algorithmic problem-solving and technical communication. 
+**MockKernel** is full-stack, AI-powered mock interview and competitive coding platform. Designed to simulate real-world technical screening, it bridges the gap between algorithmic problem-solving and technical communication. 
 
 Students can solve LeetCode-style problems in a sandboxed, multi-language coding environment and immediately transition into a dynamic, voice-enabled AI mock interview that adapts to their code and explanations.
 

@@ -15,6 +15,7 @@ import { Problem } from '../models/Problem.js';
 import { User } from '../models/User.js';
 import { analyzeFrame } from '../services/geminiProctorService.js';
 import { HttpError } from '../utils/http.js';
+import { runInTransaction } from '../utils/transaction.js';
 import {
   isRecord,
   parseObjectId,
@@ -128,9 +129,9 @@ export async function createAssessment(req: Request, res: Response): Promise<voi
 export async function getAdminAssessments(req: Request, res: Response): Promise<void> {
   const authUser = getAuthUser(req);
 
-  const assessments = await Assessment.find({
-    $or: [{ createdBy: new Types.ObjectId(authUser.id) }, { status: { $in: ['ACTIVE', 'DRAFT', 'COMPLETED'] } }],
-  })
+  const assessments = await Assessment.find(
+    authUser.role === 'superadmin' ? {} : { createdBy: new Types.ObjectId(authUser.id) },
+  )
     .sort({ createdAt: -1 })
     .lean();
 
@@ -154,6 +155,49 @@ export async function getAdminAssessments(req: Request, res: Response): Promise<
   res.status(200).json({
     data: enriched,
   });
+}
+
+export async function updateAssessment(req: Request, res: Response): Promise<void> {
+  const authUser = getAuthUser(req);
+  const assessmentId = parseObjectId(req.params.id, 'id');
+  if (!isRecord(req.body)) throw new HttpError(400, 'VALIDATION_ERROR', 'Request body must be an object.');
+  const assessment = await Assessment.findById(assessmentId);
+  if (!assessment) throw new HttpError(404, 'NOT_FOUND', 'Assessment not found.');
+  if (assessment.createdBy.toString() !== authUser.id && authUser.role !== 'superadmin') throw new HttpError(403, 'FORBIDDEN', 'Only the assessment owner or a superadmin can edit this assessment.');
+  if (typeof req.body.title === 'string') assessment.title = readString(req.body.title, 'title', { min: 3, max: 150 });
+  if (typeof req.body.description === 'string') assessment.description = req.body.description.trim();
+  if (req.body.durationMinutes !== undefined) assessment.durationMinutes = readInteger(req.body.durationMinutes, 'durationMinutes', 5, 1440);
+  if (req.body.startTime !== undefined) assessment.startTime = readDate(req.body.startTime, 'startTime');
+  if (req.body.endTime !== undefined) assessment.endTime = readDate(req.body.endTime, 'endTime');
+  if (assessment.endTime.getTime() <= assessment.startTime.getTime()) throw new HttpError(400, 'VALIDATION_ERROR', 'endTime must be strictly after startTime.');
+  if (typeof req.body.code === 'string') {
+    const code = req.body.code.trim().toUpperCase();
+    if (!/^[-A-Z0-9]{4,24}$/.test(code)) throw new HttpError(400, 'VALIDATION_ERROR', 'Code must use 4 to 24 letters, numbers, or hyphens.');
+    const existing = await Assessment.exists({ code, _id: { $ne: assessment._id } });
+    if (existing) throw new HttpError(409, 'CODE_TAKEN', 'That assessment code is already in use.');
+    assessment.code = code;
+  }
+  await assessment.save();
+  res.status(200).json({ data: assessment });
+}
+
+export async function deleteAssessment(req: Request, res: Response): Promise<void> {
+  const authUser = getAuthUser(req);
+  const assessmentId = parseObjectId(req.params.id, 'id');
+  const assessment = await Assessment.findById(assessmentId).exec();
+  if (!assessment) throw new HttpError(404, 'NOT_FOUND', 'Assessment not found.');
+  if (assessment.createdBy.toString() !== authUser.id && authUser.role !== 'superadmin') throw new HttpError(403, 'FORBIDDEN', 'Only the assessment owner or a superadmin can delete this assessment.');
+  await runInTransaction(
+    async (session) => {
+      await AssessmentSession.deleteMany({ assessmentId: assessment._id }).session(session ?? null);
+      await Assessment.deleteOne({ _id: assessment._id }).session(session ?? null);
+    },
+    async () => {
+      await AssessmentSession.deleteMany({ assessmentId: assessment._id });
+      await Assessment.deleteOne({ _id: assessment._id });
+    },
+  );
+  res.status(204).send();
 }
 
 /** Candidate: Join / Validate code and view instructions */

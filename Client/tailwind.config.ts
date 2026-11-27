@@ -3,13 +3,22 @@ import type { Config } from 'tailwindcss'
 // Theme C: Neon Glass (see Documentations/screens.md.pdf).
 // To change the theme later, only edit the tokens in this file and src/index.css.
 export default {
+  darkMode: ['class', '[data-theme="dark"]'],
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        base: '#07070F',
-        ink: '#F5F5FF',
-        muted: '#9CA3C7',
+        base: 'rgb(var(--color-base) / <alpha-value>)',
+        ink: 'rgb(var(--color-ink) / <alpha-value>)',
+        muted: 'rgb(var(--color-muted) / <alpha-value>)',
+        surface: 'rgb(var(--color-surface) / <alpha-value>)',
+        'surface-soft': 'rgb(var(--color-surface-soft) / <alpha-value>)',
+        line: 'rgb(var(--color-line) / <alpha-value>)',
+        workspace: 'rgb(var(--color-workspace) / <alpha-value>)',
+        editor: 'rgb(var(--color-editor) / <alpha-value>)',
+        'editor-ink': 'rgb(var(--color-editor-ink) / <alpha-value>)',
+        'editor-line': 'rgb(var(--color-editor-line) / <alpha-value>)',
+        'console-head': 'rgb(var(--color-console-head) / <alpha-value>)',
         violet: '#7C3AED',
         cyan: '#06B6D4',
         pink: '#F472B6',

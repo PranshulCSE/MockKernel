@@ -16,6 +16,7 @@ export interface SanitizedUser {
   name: string;
   email: string;
   role: UserRole;
+  emailVerified: boolean;
   createdAt?: Date;
 }
 
@@ -87,6 +88,7 @@ export async function registerUser(input: {
       name: created.name,
       email: created.email,
       role: created.role,
+      emailVerified: created.emailVerified,
     });
   } catch (error) {
     if (isMongoDuplicateKeyError(error)) {
@@ -119,6 +121,7 @@ export async function loginUser(input: {
     name: user.name,
     email: user.email,
     role: user.role,
+    emailVerified: user.emailVerified,
   });
 }
 
@@ -169,8 +172,9 @@ export async function googleLogin(
   if (user) {
     if (!user.googleId) {
       user.googleId = googleId;
-      await user.save();
     }
+    user.emailVerified = true;
+    await user.save();
   } else {
     try {
       user = await User.create({
@@ -178,6 +182,7 @@ export async function googleLogin(
         email: normalizedEmail,
         googleId,
         role: 'user',
+        emailVerified: true,
       });
     } catch (error) {
       if (isMongoDuplicateKeyError(error)) {
@@ -196,6 +201,7 @@ export async function googleLogin(
     name: user.name,
     email: user.email,
     role: user.role,
+    emailVerified: user.emailVerified,
   });
 }
 
@@ -227,6 +233,7 @@ export async function createAdminUser(input: {
       name: admin.name,
       email: admin.email,
       role: 'admin',
+      emailVerified: admin.emailVerified,
       createdAt: admin.createdAt,
       ...(admin.createdBy ? { createdBy: admin.createdBy.toString() } : {}),
     };

@@ -10,6 +10,8 @@ import {
   recordStrike,
   startSession,
   submitAssessment,
+  updateAssessment,
+  deleteAssessment,
 } from '../controllers/assessmentController.js';
 import {
   authenticate,
@@ -83,5 +85,7 @@ export const adminAssessmentRouter = Router();
 adminAssessmentRouter.use(authenticate, requireRole('admin', 'superadmin'));
 adminAssessmentRouter.get('/', asyncHandler(getAdminAssessments));
 adminAssessmentRouter.post('/', asyncHandler(createAssessment));
+adminAssessmentRouter.patch('/:id', asyncHandler(updateAssessment));
+adminAssessmentRouter.delete('/:id', asyncHandler(deleteAssessment));
 adminAssessmentRouter.get('/:id/report', asyncHandler(getAssessmentReport));
 adminAssessmentRouter.get('/:id/export', asyncHandler(exportAssessmentReport));

@@ -38,10 +38,19 @@ export function Modal({
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const previousActiveElement = useRef<HTMLElement | null>(null)
+  const onCloseRef = useRef(onClose)
+  const hasFocusedRef = useRef(false)
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
 
   // Manage focus trap and keyboard listeners
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) {
+      hasFocusedRef.current = false
+      return
+    }
 
     previousActiveElement.current = document.activeElement as HTMLElement
     const originalOverflow = document.body.style.overflow
@@ -50,7 +59,7 @@ export function Modal({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault()
-        onClose()
+        onCloseRef.current()
         return
       }
 
@@ -80,29 +89,33 @@ export function Modal({
 
     window.addEventListener('keydown', handleKeyDown)
 
-    // Initial focus into modal
-    const timer = setTimeout(() => {
-      if (dialogRef.current) {
-        const firstInput = dialogRef.current.querySelector<HTMLElement>(
-          'input, textarea, select, button:not([aria-label="Close modal"])',
-        )
-        if (firstInput) {
-          firstInput.focus()
-        } else {
-          dialogRef.current.focus()
+    // Initial focus into modal only on open transition
+    let timer: ReturnType<typeof setTimeout> | undefined
+    if (!hasFocusedRef.current) {
+      hasFocusedRef.current = true
+      timer = setTimeout(() => {
+        if (dialogRef.current) {
+          const firstInput = dialogRef.current.querySelector<HTMLElement>(
+            'input, textarea, select, button:not([aria-label="Close modal"])',
+          )
+          if (firstInput) {
+            firstInput.focus()
+          } else {
+            dialogRef.current.focus()
+          }
         }
-      }
-    }, 50)
+      }, 50)
+    }
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
       document.body.style.overflow = originalOverflow
-      clearTimeout(timer)
+      if (timer) clearTimeout(timer)
       if (previousActiveElement.current && typeof previousActiveElement.current.focus === 'function') {
         previousActiveElement.current.focus()
       }
     }
-  }, [isOpen, onClose])
+  }, [isOpen])
 
   return (
     <AnimatePresence>

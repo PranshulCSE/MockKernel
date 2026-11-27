@@ -47,6 +47,11 @@ export interface EnvConfig {
   clientUrl: string;
   corsOrigins: string[];
   plagiarismThreshold: number;
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpUser?: string;
+  smtpPass?: string;
+  smtpFrom?: string;
 }
 
 function isValidHttpUrl(value: string): boolean {
@@ -204,5 +209,10 @@ export function getEnvConfig(): EnvConfig {
     clientUrl: corsOrigins[0] ?? 'http://localhost:5173',
     corsOrigins,
     plagiarismThreshold,
+    ...(process.env.SMTP_HOST?.trim() ? { smtpHost: process.env.SMTP_HOST.trim() } : {}),
+    ...(process.env.SMTP_PORT?.trim() ? { smtpPort: Number(process.env.SMTP_PORT) } : {}),
+    ...(process.env.SMTP_USER?.trim() ? { smtpUser: process.env.SMTP_USER.trim() } : {}),
+    ...(process.env.SMTP_PASS ? { smtpPass: process.env.SMTP_PASS } : {}),
+    ...(process.env.SMTP_FROM?.trim() ? { smtpFrom: process.env.SMTP_FROM.trim() } : {}),
   };
 }

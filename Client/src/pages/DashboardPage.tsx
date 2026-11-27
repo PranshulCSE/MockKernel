@@ -10,27 +10,39 @@ import {
   Calendar,
   Sparkles,
   ExternalLink,
+  UserRound,
 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { GlassCard, Button, Badge, VerdictBadge, Skeleton, EmptyState } from '../components/ui'
 import { listUserSubmissions, type SubmissionItem } from '../api/submissions'
 import { listInterviews, type InterviewSession } from '../api/interviews'
+import { updateAccount } from '../api/auth'
+import { Input } from '../components/ui/Input'
+import { getMyStats, type UserStats } from '../api/users'
 
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user)
+  const setUser = useAuthStore((s) => s.setUser)
+  const [profileName, setProfileName] = useState(user?.name || '')
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [accountMessage, setAccountMessage] = useState('')
+  const [accountBusy, setAccountBusy] = useState(false)
 
   const [submissions, setSubmissions] = useState<SubmissionItem[]>([])
   const [interviews, setInterviews] = useState<InterviewSession[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [stats, setStats] = useState<UserStats | null>(null)
 
   useEffect(() => {
     let isMounted = true
 
     const fetchDashboardData = async () => {
       try {
-        const [subRes, intRes] = await Promise.allSettled([
+        const [subRes, intRes, statsRes] = await Promise.allSettled([
           listUserSubmissions({ limit: 20 }),
           listInterviews({ limit: 10 }),
+          getMyStats(),
         ])
 
         if (!isMounted) return
@@ -41,6 +53,7 @@ export default function DashboardPage() {
         if (intRes.status === 'fulfilled') {
           setInterviews(intRes.value.data || [])
         }
+        if (statsRes.status === 'fulfilled') setStats(statsRes.value)
       } catch {
         // Handled silently
       } finally {
@@ -56,19 +69,14 @@ export default function DashboardPage() {
   }, [])
 
   // KPI Calculations
-  const acceptedSubmissions = submissions.filter((s) => s.verdict === 'ACCEPTED')
-  const solvedCount = new Set(
-    acceptedSubmissions.map((s) =>
-      typeof s.problem === 'object' && s.problem ? s.problem.id : String(s.problem),
-    ),
-  ).size
-  const totalSubmissions = submissions.length
+  const solvedCount = stats?.solvedProblems ?? 0
+  const totalSubmissions = stats?.totalSubmissions ?? 0
   const acceptanceRate =
     totalSubmissions > 0
-      ? `${((acceptedSubmissions.length / totalSubmissions) * 100).toFixed(0)}%`
+      ? `${(((stats?.acceptedSubmissions ?? 0) / totalSubmissions) * 100).toFixed(0)}%`
       : '0%'
-  const completedInterviews = interviews.filter((i) => i.status === 'completed')
-  const contestsCount = new Set(submissions.filter((s) => Boolean(s.contest)).map((s) => s.contest)).size
+  const completedInterviewsCount = stats?.interviewsCompleted ?? 0
+  const contestsCount = stats?.contestsJoined ?? 0
 
   return (
     <div className="flex flex-col gap-10 max-w-6xl mx-auto pb-20">
@@ -114,6 +122,41 @@ export default function DashboardPage() {
             </Link>
           </div>
         </div>
+      </GlassCard>
+
+      <GlassCard className="p-5 sm:p-6">
+        <div className="mb-5 flex items-center gap-3 border-b border-line pb-4">
+          <UserRound className="size-5 text-cyan" />
+          <div>
+            <h2 className="font-display text-lg font-bold text-ink">Account settings</h2>
+            <p className="text-xs text-muted">Update your display name and password.</p>
+          </div>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <form className="space-y-3" onSubmit={async (event) => {
+            event.preventDefault(); setAccountBusy(true); setAccountMessage('')
+            try { const next = await updateAccount({ name: profileName }); setUser(next); setAccountMessage('Profile updated.') }
+            catch (error) { setAccountMessage(error instanceof Error ? error.message : 'Could not update profile.') }
+            finally { setAccountBusy(false) }
+          }}>
+            <Input label="Display name" value={profileName} onChange={(event) => setProfileName(event.target.value)} autoComplete="name" />
+            <Button type="submit" size="sm" loading={accountBusy}>Save profile</Button>
+          </form>
+          <form className="space-y-3" onSubmit={async (event) => {
+            event.preventDefault(); setAccountBusy(true); setAccountMessage('')
+            try { await updateAccount({ currentPassword, newPassword }); setCurrentPassword(''); setNewPassword(''); setAccountMessage('Password updated.') }
+            catch (error) { setAccountMessage(error instanceof Error ? error.message : 'Could not update password.') }
+            finally { setAccountBusy(false) }
+          }}>
+            <Input label="Current password" type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
+            <Input label="New password" type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
+            <Button type="submit" size="sm" loading={accountBusy} disabled={!currentPassword || newPassword.length < 8}>Update password</Button>
+          </form>
+        </div>
+        <p className="mt-5 border-t border-line pt-4 text-xs text-muted">
+          Signed in as {user?.email}
+        </p>
+        {accountMessage && <p role="status" className="mt-3 text-xs text-cyan">{accountMessage}</p>}
       </GlassCard>
 
       {/* KPI Tiles */}
@@ -164,7 +207,7 @@ export default function DashboardPage() {
               <Skeleton className="h-8 w-16" />
             ) : (
               <span className="font-display text-3xl font-extrabold text-ink">
-                {completedInterviews.length}
+                {completedInterviewsCount}
               </span>
             )}
             <p className="mt-1 font-sans text-xs text-muted">Evaluated speaking sessions</p>
@@ -184,7 +227,7 @@ export default function DashboardPage() {
             ) : (
               <span className="font-display text-3xl font-extrabold text-ink">{acceptanceRate}</span>
             )}
-            <p className="mt-1 font-sans text-xs text-muted">{acceptedSubmissions.length} of {totalSubmissions} runs</p>
+            <p className="mt-1 font-sans text-xs text-muted">{stats?.acceptedSubmissions ?? 0} of {totalSubmissions} runs</p>
           </div>
         </GlassCard>
       </div>
@@ -253,7 +296,7 @@ export default function DashboardPage() {
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Recent Coding Submissions */}
         <GlassCard className="p-6 flex flex-col gap-5">
-          <div className="flex items-center justify-between border-b border-white/10 pb-3">
+          <div className="flex items-center justify-between border-b border-line pb-3">
             <div className="flex items-center gap-2">
               <Code className="size-4 text-cyan" />
               <h3 className="font-display text-base font-bold text-ink">Recent Code Submissions</h3>
@@ -277,7 +320,7 @@ export default function DashboardPage() {
               className="border-none bg-transparent shadow-none p-4"
             />
           ) : (
-            <div className="flex flex-col divide-y divide-white/5">
+            <div className="flex flex-col divide-y divide-line">
               {submissions.slice(0, 6).map((s) => (
                 <div key={s.id} className="flex items-center justify-between py-3">
                   <div className="flex items-center gap-3">
@@ -300,7 +343,7 @@ export default function DashboardPage() {
 
         {/* Recent Mock Interviews */}
         <GlassCard className="p-6 flex flex-col gap-5">
-          <div className="flex items-center justify-between border-b border-white/10 pb-3">
+          <div className="flex items-center justify-between border-b border-line pb-3">
             <div className="flex items-center gap-2">
               <Mic className="size-4 text-violet" />
               <h3 className="font-display text-base font-bold text-ink">Recent Mock Interviews</h3>
@@ -324,13 +367,13 @@ export default function DashboardPage() {
               className="border-none bg-transparent shadow-none p-4"
             />
           ) : (
-            <div className="flex flex-col divide-y divide-white/5">
+            <div className="flex flex-col divide-y divide-line">
               {interviews.slice(0, 6).map((item) => (
                 <div key={item.id} className="flex items-center justify-between py-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="font-display font-semibold text-xs text-ink">
-                        {item.topics.join(', ')}
+                        {(Array.isArray(item.topics) ? item.topics : []).join(', ') || 'Interview practice'}
                       </span>
                       <Badge tone={item.difficulty === 'Hard' ? 'bad' : item.difficulty === 'Medium' ? 'warn' : 'ok'}>
                         {item.difficulty}

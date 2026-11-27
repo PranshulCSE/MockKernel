@@ -9,6 +9,7 @@ import {
   Calendar,
   Eye,
   Check,
+  Pencil,
 } from 'lucide-react'
 import {
   Button,
@@ -22,7 +23,9 @@ import {
 } from '../../components/ui'
 import {
   listAdminContests,
+  getAdminContest,
   createAdminContest,
+  updateAdminContest,
   startAdminContest,
   endAdminContest,
   rebuildAdminLeaderboard,
@@ -42,6 +45,7 @@ export default function AdminContestsPage() {
 
   // Drawer state
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [editingContestId, setEditingContestId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [availableProblems, setAvailableProblems] = useState<AdminProblemItem[]>([])
 
@@ -83,6 +87,7 @@ export default function AdminContestsPage() {
   }, [page, loadContests])
 
   const openCreateDrawer = async () => {
+    setEditingContestId(null)
     setFormTitle('')
     setFormDescription('')
     const now = new Date()
@@ -102,6 +107,36 @@ export default function AdminContestsPage() {
     }
   }
 
+  const openEditDrawer = async (contest: AdminContestItem) => {
+    if (contest.status === 'live') {
+      toast.warn('Live contests cannot be edited. End the contest first.')
+      return
+    }
+    try {
+      const [detail, pRes] = await Promise.all([
+        getAdminContest(contest.id),
+        listAdminProblems({ limit: 50, isPublished: true }),
+      ])
+      const toLocal = (value: string) => {
+        const date = new Date(value)
+        return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
+      }
+      setEditingContestId(contest.id)
+      setFormTitle(detail.title)
+      setFormDescription(detail.description || '')
+      setFormStartTime(toLocal(detail.startTime))
+      setFormEndTime(toLocal(detail.endTime))
+      setSelectedProblems((detail.problems || []).map((entry) => ({
+        problemId: typeof entry.problem === 'string' ? entry.problem : entry.problem.id,
+        points: entry.points,
+      })))
+      setAvailableProblems(pRes.data || [])
+      setIsDrawerOpen(true)
+    } catch {
+      toast.error('Could not load contest details for editing.')
+    }
+  }
+
   const toggleProblemSelection = (pId: string) => {
     setSelectedProblems((prev) => {
       const exists = prev.find((item) => item.problemId === pId)
@@ -118,7 +153,7 @@ export default function AdminContestsPage() {
     )
   }
 
-  const handleCreateContest = async () => {
+  const handleSaveContest = async () => {
     if (!formTitle.trim()) {
       toast.warn('Contest title is required.')
       return
@@ -138,7 +173,7 @@ export default function AdminContestsPage() {
 
     setIsSaving(true)
     try {
-      await createAdminContest({
+      const payload = {
         title: formTitle.trim(),
         description: formDescription.trim(),
         startTime: new Date(formStartTime).toISOString(),
@@ -147,9 +182,15 @@ export default function AdminContestsPage() {
           problem: p.problemId,
           points: p.points,
         })),
-      })
+      }
+      if (editingContestId) {
+        await updateAdminContest(editingContestId, payload)
+        toast.success('Contest updated successfully.', 'Updated')
+      } else {
+        await createAdminContest(payload)
+        toast.success('Contest created successfully.', 'Created')
+      }
 
-      toast.success('Contest created successfully.', 'Created')
       setIsDrawerOpen(false)
       void loadContests(page)
     } catch (err: unknown) {
@@ -254,6 +295,17 @@ export default function AdminContestsPage() {
         const isBusy = busyActionId === row.id
         return (
           <div className="flex flex-wrap items-center justify-end gap-2">
+            {row.status !== 'live' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                leftIcon={<Pencil className="size-3.5" />}
+                onClick={() => void openEditDrawer(row)}
+              >
+                Edit
+              </Button>
+            )}
+
             {row.status === 'draft' && (
               <Button
                 variant="primary"
@@ -354,8 +406,8 @@ export default function AdminContestsPage() {
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         width="lg"
-        title="Create New Contest"
-        description="Set contest duration, choose problems, and assign point weightings."
+        title={editingContestId ? 'Edit Contest' : 'Create New Contest'}
+        description="Set contest duration, choose problems, and assign point weightings. Live contests are read-only."
         footer={
           <>
             <Button variant="ghost" onClick={() => setIsDrawerOpen(false)}>
@@ -365,9 +417,9 @@ export default function AdminContestsPage() {
               variant="primary"
               loading={isSaving}
               leftIcon={<Check className="size-4" />}
-              onClick={handleCreateContest}
+              onClick={handleSaveContest}
             >
-              Save Draft Contest
+              {editingContestId ? 'Save Contest Changes' : 'Save Draft Contest'}
             </Button>
           </>
         }
@@ -387,7 +439,7 @@ export default function AdminContestsPage() {
               value={formDescription}
               onChange={(e) => setFormDescription(e.target.value)}
               placeholder="Rules, scoring strategy, and penalties..."
-              className="w-full rounded-ctl border border-white/10 bg-black/30 p-3 font-sans text-xs text-ink placeholder-muted focus:border-cyan focus:outline-none"
+              className="w-full rounded-ctl border border-line bg-surface-soft p-3 font-sans text-xs text-ink placeholder-muted focus:border-cyan focus:outline-none"
             />
           </div>
 
@@ -398,7 +450,7 @@ export default function AdminContestsPage() {
                 type="datetime-local"
                 value={formStartTime}
                 onChange={(e) => setFormStartTime(e.target.value)}
-                className="h-11 rounded-ctl border border-white/10 bg-white/5 px-3 font-mono text-xs text-ink focus:border-cyan focus:outline-none"
+                className="h-11 rounded-ctl border border-line bg-surface-soft px-3 font-mono text-xs text-ink focus:border-cyan focus:outline-none"
               />
             </div>
 
@@ -408,14 +460,14 @@ export default function AdminContestsPage() {
                 type="datetime-local"
                 value={formEndTime}
                 onChange={(e) => setFormEndTime(e.target.value)}
-                className="h-11 rounded-ctl border border-white/10 bg-white/5 px-3 font-mono text-xs text-ink focus:border-cyan focus:outline-none"
+                className="h-11 rounded-ctl border border-line bg-surface-soft px-3 font-mono text-xs text-ink focus:border-cyan focus:outline-none"
               />
             </div>
           </div>
 
           {/* Problem Selector with Points */}
-          <div className="flex flex-col gap-3 rounded-ctl border border-white/10 bg-white/5 p-4">
-            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+          <div className="flex flex-col gap-3 rounded-ctl border border-line bg-surface-soft p-4">
+            <div className="flex items-center justify-between border-b border-line pb-2">
               <span className="font-display text-sm font-semibold text-ink">
                 Select Contest Problems ({selectedProblems.length})
               </span>
@@ -426,7 +478,7 @@ export default function AdminContestsPage() {
               </span>
             </div>
 
-            <div className="max-h-60 overflow-y-auto divide-y divide-white/5 pr-1">
+            <div className="max-h-60 overflow-y-auto divide-y divide-line pr-1">
               {availableProblems.length === 0 ? (
                 <p className="py-4 text-center font-sans text-xs text-muted">
                   No published problems found. Publish problems in Problems Manager first.
@@ -446,7 +498,7 @@ export default function AdminContestsPage() {
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => toggleProblemSelection(prob.id)}
-                          className="size-4 rounded border-white/20 bg-base text-cyan"
+                          className="size-4 rounded border-line bg-surface text-cyan"
                         />
                         <div>
                           <span className="font-sans text-xs font-semibold text-ink block">
@@ -468,7 +520,7 @@ export default function AdminContestsPage() {
                             onChange={(e) =>
                               updateProblemPoints(prob.id, parseInt(e.target.value, 10) || 100)
                             }
-                            className="w-20 rounded-ctl border border-white/10 bg-black/40 px-2 py-1 font-mono text-xs text-ink focus:border-cyan focus:outline-none"
+                            className="w-20 rounded-ctl border border-line bg-surface px-2 py-1 font-mono text-xs text-ink focus:border-cyan focus:outline-none"
                           />
                         </div>
                       )}
