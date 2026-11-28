@@ -42,11 +42,11 @@ export async function getMyStats(req: Request, res: Response): Promise<void> {
 
   const [submissionRows, contestsJoined, interviewRows] = await Promise.all([
     Submission.aggregate<SubmissionStatsFacet>([
-      { $match: { user: userId, mode: 'submit' } },
+      { $match: { user: userId } },
       {
         $facet: {
           solvedProblems: [
-            { $match: { verdict: 'ACCEPTED' } },
+            { $match: { mode: 'submit', verdict: 'ACCEPTED' } },
             { $group: { _id: '$problem' } },
             { $count: 'count' },
           ],

@@ -9,6 +9,7 @@
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
     "process-submission": "tsx src/scripts/processSubmission.ts",
+    "verify:judge0:two-sum": "tsx src/scripts/verifyJudge0TwoSum.ts",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit",
     "test": "vitest run"
   },

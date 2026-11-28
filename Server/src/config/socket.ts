@@ -60,6 +60,9 @@ export function createSocketServer(httpServer: HttpServer): Server {
     const user = (socket.data as { user?: AuthUser }).user;
     if (user) {
       void socket.join(`user:${user.id}`);
+      if (user.role === 'superadmin') {
+        void socket.join('superadmins');
+      }
     }
 
     socket.on('contest:join', (contestId: unknown) => {

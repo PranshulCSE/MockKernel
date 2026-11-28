@@ -110,6 +110,16 @@ function getStarterCode(problem: ProblemDetail | null, language: string): string
   )
 }
 
+function hasCppEntryPoint(sourceCode: string): boolean {
+  // Ignore comments and literals so text such as `// int main()` cannot pass
+  // the preflight check while still sending a translation unit with no main.
+  const code = sourceCode.replace(
+    /\/\*[\s\S]*?\*\/|\/\/[^\r\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g,
+    ' '
+  )
+  return /\bint\s+main\s*\(/.test(code)
+}
+
 function starterVersion(code: string): string {
   let hash = 0
   for (let i = 0; i < code.length; i++) {
@@ -152,6 +162,7 @@ export default function ProblemWorkspacePage() {
   // Editor State
   const [language, setLanguage] = useState<string>('python')
   const [code, setCode] = useState<string>('')
+  const [editorResetKey, setEditorResetKey] = useState(0)
   const [isDirty, setIsDirty] = useState<boolean>(false)
   const [showLeaveModal, setShowLeaveModal] = useState(false)
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null)
@@ -166,6 +177,8 @@ export default function ProblemWorkspacePage() {
   // Execution State
   const [executionState, setExecutionState] = useState<{
     status: Verdict | 'IDLE'
+    mode?: 'run' | 'submit'
+    submissionId?: string
     runtime?: number
     memory?: number
     stdout?: string
@@ -222,7 +235,7 @@ export default function ProblemWorkspacePage() {
 
     // A C++ submission must have an entry point. Discard stale/custom drafts
     // copied from LeetCode-style starters so Judge0 never sees a no-main source.
-    const hasEntryPoint = language !== 'cpp' || /\bmain\s*\(/.test(savedDraft ?? '')
+    const hasEntryPoint = language !== 'cpp' || hasCppEntryPoint(savedDraft ?? '')
 
     let cancelled = false
     const applyDraft = () => {
@@ -267,7 +280,10 @@ export default function ProblemWorkspacePage() {
 
   // Reset to starter code
   const handleResetStarter = () => {
-    setCode(getStarterCode(problem, language))
+    const starterCode = getStarterCode(problem, language)
+    setCode(starterCode)
+    // Force Monaco to replace its current model so Reset is visible immediately.
+    setEditorResetKey((key) => key + 1)
     if (id) {
       localStorage.removeItem(draftKeyFor(id, language, problem))
     }
@@ -324,7 +340,7 @@ export default function ProblemWorkspacePage() {
 
     setConsoleTab('output')
 
-    if (language === 'cpp' && !/\bmain\s*\(/.test(code)) {
+    if (language === 'cpp' && !hasCppEntryPoint(code)) {
       setExecutionState({
         status: 'COMPILE_ERROR',
         compileOutput: 'C++ solutions must include an entry point: int main() { ... }',
@@ -336,6 +352,7 @@ export default function ProblemWorkspacePage() {
     // Optimistic pending within 100ms
     setExecutionState({
       status: 'PENDING',
+      mode,
       isOptimistic: true,
     })
 
@@ -350,9 +367,12 @@ export default function ProblemWorkspacePage() {
       const submissionId = submission?.id || submission?.submissionId
 
       if (submissionId) {
+        setExecutionState((current) => ({ ...current, submissionId }))
         trackSubmission(submissionId, (update: VerdictUpdatePayload) => {
           setExecutionState({
             status: update.verdict,
+            mode,
+            submissionId,
             runtime: update.runtime,
             memory: update.memory,
             compileOutput: update.compileOutput,
@@ -879,11 +899,15 @@ export default function ProblemWorkspacePage() {
                 <div className="flex items-center justify-between border-b border-white/10 pb-3">
                   <div className="flex items-center gap-3">
                     <VerdictBadge verdict={executionState.status} />
-                    {executionState.isOptimistic && (
+                    {executionState.isOptimistic ? (
                       <span className="text-[11px] text-muted animate-pulse">
-                        (Sent to execution worker...)
+                        {executionState.mode === 'submit' ? 'Submitting…' : 'Running…'}
                       </span>
-                    )}
+                    ) : executionState.status === 'ACCEPTED' ? (
+                      <span className="text-[11px] font-medium text-ok">
+                        {executionState.mode === 'submit' ? 'Submission accepted' : 'All sample tests passed'}
+                      </span>
+                    ) : null}
                   </div>
 
                   {executionState.runtime !== undefined && (
@@ -895,6 +919,13 @@ export default function ProblemWorkspacePage() {
                     </div>
                   )}
                 </div>
+
+                {executionState.submissionId && (
+                  <div className="text-[11px] text-muted">
+                    {executionState.mode === 'submit' ? 'Submission' : 'Run'} ID:{' '}
+                    <span className="font-mono text-ink">{executionState.submissionId}</span>
+                  </div>
+                )}
 
                 {/* Edge Case E2: 10s TLE Timeout explanation UI */}
                 {executionState.status === 'TLE' && (
@@ -941,22 +972,28 @@ export default function ProblemWorkspacePage() {
                 {/* Test case breakdown */}
                 {executionState.testCaseResults && executionState.testCaseResults.length > 0 && (
                   <div className="flex flex-col gap-2 mt-2">
-                    <span className="text-[11px] text-muted">Test Case Results:</span>
+                    <span className="text-[11px] text-muted">
+                      Tests passed: {executionState.testCaseResults.filter((tc) => tc.passed ?? (tc.verdict ?? tc.status) === 'ACCEPTED').length}
+                      {' / '}{executionState.testCaseResults.length}
+                    </span>
                     <div className="grid gap-2 sm:grid-cols-2">
-                      {executionState.testCaseResults.map((tc, idx) => (
+                      {executionState.testCaseResults.map((tc, idx) => {
+                        const passed = tc.passed ?? (tc.verdict ?? tc.status) === 'ACCEPTED'
+                        return (
                         <div
                           key={idx}
                           className={cn(
                             'flex items-center justify-between rounded-ctl border p-2.5 text-xs',
-                            tc.status === 'ACCEPTED'
+                            passed
                               ? 'border-ok/30 bg-ok/10 text-ok'
                               : 'border-bad/30 bg-bad/10 text-bad'
                           )}
                         >
                           <span className="font-semibold">Test {idx + 1}</span>
-                          <span className="font-mono">{tc.status}</span>
+                          <span className="font-mono">{tc.verdict ?? tc.status ?? (passed ? 'ACCEPTED' : 'FAILED')}</span>
                         </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                 )}
@@ -981,6 +1018,7 @@ export default function ProblemWorkspacePage() {
           first={
             <div className="h-full w-full">
               <Editor
+                key={`${id ?? 'problem'}-${language}-${editorResetKey}`}
                 height="100%"
                 language={LANGUAGES.find((l) => l.id === language)?.monaco || 'python'}
                 value={code}

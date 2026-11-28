@@ -54,4 +54,48 @@ describe('LocalRunnerService', () => {
     expect(res.passed).toBe(false);
     expect(res.compileOutput).toBeDefined();
   });
+
+  it('passes all seeded Two Sum cases with the reset C++ starter code', async () => {
+    const code = `#include <iostream>
+#include <unordered_map>
+#include <vector>
+using namespace std;
+vector<int> twoSum(const vector<int>& nums, int target) {
+  unordered_map<int, int> seen;
+  for (int i = 0; i < static_cast<int>(nums.size()); i++) {
+    auto match = seen.find(target - nums[i]);
+    if (match != seen.end()) return {match->second, i};
+    seen[nums[i]] = i;
+  }
+  return {};
+}
+int main() {
+  vector<int> values;
+  int value;
+  while (cin >> value) values.push_back(value);
+  if (values.empty()) return 0;
+  int target = values.back();
+  values.pop_back();
+  const auto result = twoSum(values, target);
+  for (size_t i = 0; i < result.size(); i++) {
+    if (i) cout << ' ';
+    cout << result[i];
+  }
+  cout << endl;
+}
+`;
+    const cases = [
+      ['2 7 11 15\n9', '0 1'],
+      ['3 2 4\n6', '1 2'],
+      ['3 3\n6', '0 1'],
+      ['-4 8 3 12\n-1', '0 2'],
+      ['1000000000 -1000000000 5\n0', '0 1'],
+    ] as const;
+
+    for (const [input, expected] of cases) {
+      const result = await runner.executeTestCase(code, 'cpp', input, expected);
+      expect(result.verdict, `input ${JSON.stringify(input)}`).toBe('ACCEPTED');
+      expect(result.passed).toBe(true);
+    }
+  }, 30_000);
 });

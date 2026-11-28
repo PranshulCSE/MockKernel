@@ -346,13 +346,16 @@ export default function AssessmentArenaPage() {
           if (update.memory) outputText += `Memory: ${update.memory}KB\n\n`
           if (update.compileOutput) outputText += `Compiler Output:\n${update.compileOutput}\n\n`
 
-          const passedCount = update.testCaseResults?.filter((t) => t.status === 'ACCEPTED').length || 0
+          const passedCount = update.testCaseResults?.filter(
+            (t) => t.passed ?? (t.verdict ?? t.status) === 'ACCEPTED'
+          ).length || 0
           const totalCount = update.testCaseResults?.length || 0
 
           if (update.testCaseResults && update.testCaseResults.length > 0) {
             outputText += `Test Cases Passed: ${passedCount} / ${totalCount}\n`
             update.testCaseResults.forEach((tc, idx) => {
-              outputText += `  Case #${idx + 1}: ${tc.status} (${tc.runtime ?? 0}ms, ${tc.memory ?? 0}KB)\n`
+              const verdict = tc.verdict ?? tc.status ?? (tc.passed ? 'ACCEPTED' : 'FAILED')
+              outputText += `  Case #${idx + 1}: ${verdict} (${tc.runtime ?? 0}ms, ${tc.memory ?? 0}KB)\n`
             })
           }
 

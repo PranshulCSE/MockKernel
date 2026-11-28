@@ -278,6 +278,12 @@ describe('AI Interviews and Admin Management Endpoints', () => {
       ]) as never
     );
 
+    const allUsersRes = await request(app)
+      .get('/api/admin/users?page=1&limit=5')
+      .set('Authorization', `Bearer ${superToken}`);
+    expect(allUsersRes.status).toBe(200);
+    expect(userFindSpy).toHaveBeenLastCalledWith({});
+
     const listUsersRes = await request(app)
       .get('/api/admin/users?page=1&limit=5&role=admin&search=adm')
       .set('Authorization', `Bearer ${superToken}`);

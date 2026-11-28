@@ -45,13 +45,13 @@ export async function createAdmin(req: Request, res: Response): Promise<void> {
 /** GET /api/admin/users (superadmin only, supports role/search filtering & pagination) */
 export async function listAdmins(req: Request, res: Response): Promise<void> {
   const { page, limit } = parsePaginationQuery(req.query as Record<string, unknown>);
-  const role = readQueryString(req.query.role, 'role') || 'admin';
+  const role = readQueryString(req.query.role, 'role');
   const search = readQueryString(req.query.search, 'search');
 
   const result = await listUsersPaginated({
     page,
     limit,
-    role,
+    ...(role ? { role } : {}),
     ...(search ? { search } : {}),
   });
 

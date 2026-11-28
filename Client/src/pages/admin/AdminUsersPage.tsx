@@ -27,8 +27,10 @@ import {
   type AdminUserItem,
 } from '../../api/admin'
 import { useAuthStore } from '../../store/authStore'
+import { useSocket } from '../../hooks/useSocket'
 
 export default function AdminUsersPage() {
+  const { onAdminUsersUpdate } = useSocket()
   const user = useAuthStore((s) => s.user)
   const toast = useToast()
 
@@ -83,6 +85,13 @@ export default function AdminUsersPage() {
     }
     void run()
   }, [page, isSuperAdmin, loadUsers])
+
+  useEffect(() => {
+    if (!isSuperAdmin) return
+    return onAdminUsersUpdate(() => {
+      void loadUsers(page)
+    })
+  }, [isSuperAdmin, onAdminUsersUpdate, loadUsers, page])
 
   const handleCreateAdmin = async () => {
     if (!adminName.trim()) {
@@ -156,7 +165,7 @@ export default function AdminUsersPage() {
       render: (row) => {
         const tone: 'flag' | 'run' | 'ok' =
           row.role === 'superadmin' ? 'flag' : row.role === 'admin' ? 'run' : 'ok'
-        return <Badge tone={tone}>{row.role.toUpperCase()}</Badge>
+        return <Badge tone={tone}>{row.role === 'user' ? 'STUDENT' : row.role.toUpperCase()}</Badge>
       },
     },
     {

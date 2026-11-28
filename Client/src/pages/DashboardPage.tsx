@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router'
 import {
   Code,
@@ -22,8 +22,10 @@ import { listInterviews, type InterviewSession } from '../api/interviews'
 import { updateAccount } from '../api/auth'
 import { Input } from '../components/ui/Input'
 import { getMyStats, type UserStats } from '../api/users'
+import { useSocket } from '../hooks/useSocket'
 
 export default function DashboardPage() {
+  const { onUserStatsUpdate } = useSocket()
   const user = useAuthStore((s) => s.user)
   const setUser = useAuthStore((s) => s.setUser)
   const [profileName, setProfileName] = useState(user?.name || '')
@@ -39,6 +41,14 @@ export default function DashboardPage() {
   const [interviews, setInterviews] = useState<InterviewSession[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [stats, setStats] = useState<UserStats | null>(null)
+
+  const refreshStats = useCallback(async () => {
+    try {
+      setStats(await getMyStats())
+    } catch {
+      // Keep the last successful counts during temporary network failures.
+    }
+  }, [])
 
   useEffect(() => {
     let isMounted = true
@@ -73,6 +83,25 @@ export default function DashboardPage() {
       isMounted = false
     }
   }, [])
+
+  useEffect(() => {
+    const unsubscribe = onUserStatsUpdate(() => {
+      void refreshStats()
+    })
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void refreshStats()
+    }
+    const timer = window.setInterval(refreshWhenVisible, 15_000)
+    window.addEventListener('focus', refreshWhenVisible)
+    document.addEventListener('visibilitychange', refreshWhenVisible)
+
+    return () => {
+      unsubscribe()
+      window.clearInterval(timer)
+      window.removeEventListener('focus', refreshWhenVisible)
+      document.removeEventListener('visibilitychange', refreshWhenVisible)
+    }
+  }, [onUserStatsUpdate, refreshStats])
 
   // KPI Calculations
   const solvedCount = stats?.solvedProblems ?? 0
@@ -230,7 +259,9 @@ export default function DashboardPage() {
             ) : (
               <span className="font-display text-3xl font-extrabold text-ink">{solvedCount}</span>
             )}
-            <p className="mt-1 font-sans text-xs text-muted">Unique accepted solutions</p>
+            <p className="mt-1 font-sans text-xs text-muted">
+              {stats?.attemptedProblems ?? 0} problems attempted · unique accepted solutions
+            </p>
           </div>
         </GlassCard>
 
@@ -283,7 +314,9 @@ export default function DashboardPage() {
             ) : (
               <span className="font-display text-3xl font-extrabold text-ink">{acceptanceRate}</span>
             )}
-            <p className="mt-1 font-sans text-xs text-muted">{stats?.acceptedSubmissions ?? 0} of {totalSubmissions} runs</p>
+            <p className="mt-1 font-sans text-xs text-muted">
+              {stats?.acceptedSubmissions ?? 0} accepted of {totalSubmissions} code attempts
+            </p>
           </div>
         </GlassCard>
       </div>
