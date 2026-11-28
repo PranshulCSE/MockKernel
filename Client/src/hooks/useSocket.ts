@@ -5,6 +5,8 @@ import type {
   SocketStatus,
   VerdictUpdatePayload,
   LeaderboardUpdatePayload,
+  UserStatsUpdatePayload,
+  AdminUsersUpdatePayload,
 } from '../types/socket'
 import type { Verdict } from '../types/verdict'
 
@@ -30,6 +32,8 @@ export function useSocket() {
   // Callbacks registry
   const verdictCallbacks = useRef<Set<(data: VerdictUpdatePayload) => void>>(new Set())
   const leaderboardCallbacks = useRef<Set<(data: LeaderboardUpdatePayload) => void>>(new Set())
+  const userStatsCallbacks = useRef<Set<(data: UserStatsUpdatePayload) => void>>(new Set())
+  const adminUsersCallbacks = useRef<Set<(data: AdminUsersUpdatePayload) => void>>(new Set())
 
   // Active tracking registry for polling fallback: submissionId -> callback
   const pendingSubmissions = useRef<Map<string, (data: VerdictUpdatePayload) => void>>(new Map())
@@ -61,7 +65,17 @@ export function useSocket() {
 
           if (!res.ok) return
 
-          const data = (await res.json()) as VerdictUpdatePayload
+          const response = (await res.json()) as
+            | { data?: VerdictUpdatePayload }
+            | VerdictUpdatePayload
+          const payload: VerdictUpdatePayload =
+            'data' in response && response.data
+              ? response.data
+              : (response as VerdictUpdatePayload)
+          const data = {
+            ...payload,
+            submissionId: payload.submissionId || submissionId,
+          } as VerdictUpdatePayload
 
           callback(data)
           verdictCallbacks.current.forEach((cb) => cb(data))
@@ -88,14 +102,12 @@ export function useSocket() {
     [accessToken, stopPolling]
   )
 
-  // Track submission: if socket is healthy, wait for socket event; if socket is disconnected/drops, fall back to polling
+  // Polling also closes the race where a very fast submission finishes before
+  // the client receives its ID and registers the socket callback.
   const trackSubmission = useCallback(
     (submissionId: string, onUpdate: (data: VerdictUpdatePayload) => void) => {
       pendingSubmissions.current.set(submissionId, onUpdate)
-
-      if (!socketRef.current || !socketRef.current.connected) {
-        startPolling(submissionId, onUpdate)
-      }
+      startPolling(submissionId, onUpdate)
     },
     [startPolling]
   )
@@ -137,6 +149,9 @@ export function useSocket() {
 
     socket.on('verdict:update', (payload: VerdictUpdatePayload) => {
       verdictCallbacks.current.forEach((cb) => cb(payload))
+      userStatsCallbacks.current.forEach((cb) =>
+        cb({ reason: 'submission-completed', submissionId: payload.submissionId })
+      )
 
       if (pendingSubmissions.current.has(payload.submissionId)) {
         const handler = pendingSubmissions.current.get(payload.submissionId)
@@ -151,6 +166,14 @@ export function useSocket() {
 
     socket.on('leaderboard:update', (payload: LeaderboardUpdatePayload) => {
       leaderboardCallbacks.current.forEach((cb) => cb(payload))
+    })
+
+    socket.on('user:stats:update', (payload: UserStatsUpdatePayload) => {
+      userStatsCallbacks.current.forEach((cb) => cb(payload))
+    })
+
+    socket.on('admin:users:update', (payload: AdminUsersUpdatePayload) => {
+      adminUsersCallbacks.current.forEach((cb) => cb(payload))
     })
 
     const timers = pollingTimers.current
@@ -189,6 +212,20 @@ export function useSocket() {
     }
   }, [])
 
+  const onUserStatsUpdate = useCallback((callback: (data: UserStatsUpdatePayload) => void) => {
+    userStatsCallbacks.current.add(callback)
+    return () => {
+      userStatsCallbacks.current.delete(callback)
+    }
+  }, [])
+
+  const onAdminUsersUpdate = useCallback((callback: (data: AdminUsersUpdatePayload) => void) => {
+    adminUsersCallbacks.current.add(callback)
+    return () => {
+      adminUsersCallbacks.current.delete(callback)
+    }
+  }, [])
+
   return {
     status,
     joinContest,
@@ -196,5 +233,7 @@ export function useSocket() {
     trackSubmission,
     onVerdictUpdate,
     onLeaderboardUpdate,
+    onUserStatsUpdate,
+    onAdminUsersUpdate,
   }
 }

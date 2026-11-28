@@ -47,10 +47,63 @@ const LANGUAGES = [
 ]
 
 const DEFAULT_STARTER_CODES: Record<string, string> = {
-  python: `def solution():\n    # Write your solution here\n    pass\n`,
-  cpp: `#include <iostream>\n\nusing namespace std;\n\nint main() {\n    // Write your solution here\n    return 0;\n}\n`,
-  java: `public class Solution {\n    public static void main(String[] args) {\n        // Write your solution here\n    }\n}\n`,
-  javascript: `function solution() {\n    // Write your solution here\n}\n`,
+  python: `import sys
+
+def solve(data):
+    # data is the raw stdin as a string
+    # Write your solution here
+    return ""
+
+if __name__ == "__main__":
+    print(solve(sys.stdin.read().rstrip()))
+`,
+  cpp: `#include <iostream>
+#include <iterator>
+#include <string>
+using namespace std;
+
+string solve(const string& input) {
+    // input is the raw stdin
+    // Write your solution here
+    return "";
+}
+
+int main() {
+    string input((istreambuf_iterator<char>(cin)), istreambuf_iterator<char>());
+    cout << solve(input) << endl;
+    return 0;
+}
+`,
+  java: `import java.util.Scanner;
+
+public class Main {
+    static String solve(String input) {
+        // input is the raw stdin
+        // Write your solution here
+        return "";
+    }
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        StringBuilder input = new StringBuilder();
+        while (scanner.hasNextLine()) {
+            if (input.length() > 0) input.append(System.lineSeparator());
+            input.append(scanner.nextLine());
+        }
+        System.out.println(solve(input.toString()));
+    }
+}
+`,
+  javascript: `const fs = require('fs')
+
+function solve(input) {
+  // input is the raw stdin as a string
+  // Write your solution here
+  return ''
+}
+
+console.log(solve(fs.readFileSync(0, 'utf8').trimEnd()))
+`,
 }
 
 export default function AssessmentArenaPage() {
@@ -293,13 +346,16 @@ export default function AssessmentArenaPage() {
           if (update.memory) outputText += `Memory: ${update.memory}KB\n\n`
           if (update.compileOutput) outputText += `Compiler Output:\n${update.compileOutput}\n\n`
 
-          const passedCount = update.testCaseResults?.filter((t) => t.status === 'ACCEPTED').length || 0
+          const passedCount = update.testCaseResults?.filter(
+            (t) => t.passed ?? (t.verdict ?? t.status) === 'ACCEPTED'
+          ).length || 0
           const totalCount = update.testCaseResults?.length || 0
 
           if (update.testCaseResults && update.testCaseResults.length > 0) {
             outputText += `Test Cases Passed: ${passedCount} / ${totalCount}\n`
             update.testCaseResults.forEach((tc, idx) => {
-              outputText += `  Case #${idx + 1}: ${tc.status} (${tc.runtime ?? 0}ms, ${tc.memory ?? 0}KB)\n`
+              const verdict = tc.verdict ?? tc.status ?? (tc.passed ? 'ACCEPTED' : 'FAILED')
+              outputText += `  Case #${idx + 1}: ${verdict} (${tc.runtime ?? 0}ms, ${tc.memory ?? 0}KB)\n`
             })
           }
 

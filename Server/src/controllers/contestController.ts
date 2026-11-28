@@ -10,6 +10,7 @@ import {
   type IContestProblem,
 } from '../models/Contest.js';
 import { ContestParticipant } from '../models/ContestParticipant.js';
+import { getIO } from '../config/socket.js';
 import { Problem } from '../models/Problem.js';
 import { Submission } from '../models/Submission.js';
 import {
@@ -772,6 +773,11 @@ export async function joinContest(req: Request, res: Response): Promise<void> {
       user: new Types.ObjectId(authUser.id),
     });
 
+    getIO()?.to(`user:${authUser.id}`).emit('user:stats:update', {
+      reason: 'contest-joined',
+      contestId: contest.id,
+    });
+
     res.status(201).json({
       data: {
         contestId: contest.id,
@@ -840,6 +846,10 @@ export async function leaveContest(req: Request, res: Response): Promise<void> {
   }
 
   await ContestParticipant.deleteOne({ _id: participant._id }).exec();
+  getIO()?.to(`user:${authUser.id}`).emit('user:stats:update', {
+    reason: 'contest-left',
+    contestId: contest.id,
+  });
   res.status(204).send();
 }
 

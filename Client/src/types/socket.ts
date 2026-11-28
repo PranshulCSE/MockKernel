@@ -4,7 +4,10 @@ export type SocketStatus = 'connected' | 'reconnecting' | 'polling' | 'disconnec
 
 export interface TestCaseResult {
   testCaseId?: string | number
-  status: Verdict
+  passed?: boolean
+  verdict?: Verdict
+  /** Legacy shape used by assessment summaries. */
+  status?: Verdict
   runtime?: number
   memory?: number
   stdout?: string
@@ -38,4 +41,14 @@ export interface LeaderboardUpdatePayload {
     limit: number
     total: number
   }
+}
+
+export interface UserStatsUpdatePayload {
+  reason: 'submission-created' | 'submission-completed' | 'contest-joined' | 'contest-left'
+  submissionId?: string
+  contestId?: string
+}
+
+export interface AdminUsersUpdatePayload {
+  reason: 'google-sign-in'
 }

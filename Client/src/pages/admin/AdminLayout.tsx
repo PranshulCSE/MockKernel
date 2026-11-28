@@ -19,14 +19,14 @@ export default function AdminLayout() {
   ]
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col pb-16 sm:pb-24">
-      <div className="sticky top-16 z-30 -mx-3 border-b border-line bg-base/95 px-3 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="mx-auto flex w-full max-w-7xl flex-col px-4 pb-16 sm:px-6 sm:pb-24 lg:px-8">
+      <div className="sticky top-16 z-30 -mx-4 border-b border-line bg-base/95 px-4 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <span className="grid size-8 shrink-0 place-items-center rounded-full border border-cyan/25 bg-cyan/10">
               <Shield className="size-4 text-cyan" />
             </span>
-            <h1 className="truncate font-display text-lg font-bold text-ink sm:text-2xl">
+            <h1 className="truncate font-display text-lg font-bold text-ink sm:text-xl">
               Control Room
             </h1>
             <Badge tone={isSuperAdmin ? 'flag' : 'run'}>
@@ -36,10 +36,10 @@ export default function AdminLayout() {
 
           <Link
             to="/dashboard"
-            className="flex shrink-0 items-center gap-2 rounded-full border border-line bg-surface-soft px-3 py-2 text-xs font-medium text-muted transition-colors hover:bg-cyan/10 hover:text-ink"
+            className="flex shrink-0 items-center gap-2 rounded-full border border-line bg-surface-soft px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-cyan/10 hover:text-ink"
           >
             <ArrowLeft className="size-3.5" />
-            <span>Student Portal</span>
+            <span className="hidden sm:inline">Student Portal</span>
           </Link>
         </div>
 
@@ -47,7 +47,10 @@ export default function AdminLayout() {
           Platform governance, authoring, live monitoring and audits.
         </p>
 
-        <nav aria-label="Admin Navigation" className="mt-3 flex flex-wrap items-center gap-2 pb-1">
+        <nav
+          aria-label="Admin Navigation"
+          className="mt-3 -mx-1 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none"
+        >
           {navLinks.map((l) => (
             <NavLink
               key={l.to}
@@ -55,9 +58,9 @@ export default function AdminLayout() {
               end={l.end}
               className={({ isActive }) =>
                 cn(
-                  'flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold transition-colors sm:px-4',
+                  'flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors sm:px-4 sm:py-2',
                   isActive
-                    ? 'bg-brand text-ink shadow-glow'
+                    ? 'bg-brand text-white shadow-glow'
                     : 'text-muted hover:bg-surface-soft hover:text-ink',
                 )
               }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router'
 import {
   Code,
@@ -11,6 +11,9 @@ import {
   Sparkles,
   ExternalLink,
   UserRound,
+  Lock,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { GlassCard, Button, Badge, VerdictBadge, Skeleton, EmptyState } from '../components/ui'
@@ -19,13 +22,17 @@ import { listInterviews, type InterviewSession } from '../api/interviews'
 import { updateAccount } from '../api/auth'
 import { Input } from '../components/ui/Input'
 import { getMyStats, type UserStats } from '../api/users'
+import { useSocket } from '../hooks/useSocket'
 
 export default function DashboardPage() {
+  const { onUserStatsUpdate } = useSocket()
   const user = useAuthStore((s) => s.user)
   const setUser = useAuthStore((s) => s.setUser)
   const [profileName, setProfileName] = useState(user?.name || '')
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
   const [accountMessage, setAccountMessage] = useState('')
   const [accountBusy, setAccountBusy] = useState(false)
   const [showAccountSettings, setShowAccountSettings] = useState(false)
@@ -34,6 +41,14 @@ export default function DashboardPage() {
   const [interviews, setInterviews] = useState<InterviewSession[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [stats, setStats] = useState<UserStats | null>(null)
+
+  const refreshStats = useCallback(async () => {
+    try {
+      setStats(await getMyStats())
+    } catch {
+      // Keep the last successful counts during temporary network failures.
+    }
+  }, [])
 
   useEffect(() => {
     let isMounted = true
@@ -68,6 +83,25 @@ export default function DashboardPage() {
       isMounted = false
     }
   }, [])
+
+  useEffect(() => {
+    const unsubscribe = onUserStatsUpdate(() => {
+      void refreshStats()
+    })
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void refreshStats()
+    }
+    const timer = window.setInterval(refreshWhenVisible, 15_000)
+    window.addEventListener('focus', refreshWhenVisible)
+    document.addEventListener('visibilitychange', refreshWhenVisible)
+
+    return () => {
+      unsubscribe()
+      window.clearInterval(timer)
+      window.removeEventListener('focus', refreshWhenVisible)
+      document.removeEventListener('visibilitychange', refreshWhenVisible)
+    }
+  }, [onUserStatsUpdate, refreshStats])
 
   // KPI Calculations
   const solvedCount = stats?.solvedProblems ?? 0
@@ -149,7 +183,13 @@ export default function DashboardPage() {
             catch (error) { setAccountMessage(error instanceof Error ? error.message : 'Could not update profile.') }
             finally { setAccountBusy(false) }
           }}>
-            <Input label="Display name" value={profileName} onChange={(event) => setProfileName(event.target.value)} autoComplete="name" />
+            <Input
+              label="Display name"
+              value={profileName}
+              onChange={(event) => setProfileName(event.target.value)}
+              autoComplete="name"
+              leftIcon={<UserRound className="size-[18px]" />}
+            />
             <Button type="submit" size="sm" loading={accountBusy}>Save profile</Button>
           </form>
           <form className="space-y-3" onSubmit={async (event) => {
@@ -158,8 +198,42 @@ export default function DashboardPage() {
             catch (error) { setAccountMessage(error instanceof Error ? error.message : 'Could not update password.') }
             finally { setAccountBusy(false) }
           }}>
-            <Input label="Current password" type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
-            <Input label="New password" type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
+            <Input
+              label="Current password"
+              type={showCurrentPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+              leftIcon={<Lock className="size-[18px]" />}
+              rightSlot={
+                <button
+                  type="button"
+                  aria-label={showCurrentPassword ? 'Hide current password' : 'Show current password'}
+                  onClick={() => setShowCurrentPassword((v) => !v)}
+                  className="grid size-8 place-items-center rounded-full text-muted hover:text-ink"
+                >
+                  {showCurrentPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              }
+            />
+            <Input
+              label="New password"
+              type={showNewPassword ? 'text' : 'password'}
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+              leftIcon={<Lock className="size-[18px]" />}
+              rightSlot={
+                <button
+                  type="button"
+                  aria-label={showNewPassword ? 'Hide new password' : 'Show new password'}
+                  onClick={() => setShowNewPassword((v) => !v)}
+                  className="grid size-8 place-items-center rounded-full text-muted hover:text-ink"
+                >
+                  {showNewPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              }
+            />
             <Button type="submit" size="sm" loading={accountBusy} disabled={!currentPassword || newPassword.length < 8}>Update password</Button>
           </form>
         </div>
@@ -185,7 +259,9 @@ export default function DashboardPage() {
             ) : (
               <span className="font-display text-3xl font-extrabold text-ink">{solvedCount}</span>
             )}
-            <p className="mt-1 font-sans text-xs text-muted">Unique accepted solutions</p>
+            <p className="mt-1 font-sans text-xs text-muted">
+              {stats?.attemptedProblems ?? 0} problems attempted · unique accepted solutions
+            </p>
           </div>
         </GlassCard>
 
@@ -238,7 +314,9 @@ export default function DashboardPage() {
             ) : (
               <span className="font-display text-3xl font-extrabold text-ink">{acceptanceRate}</span>
             )}
-            <p className="mt-1 font-sans text-xs text-muted">{stats?.acceptedSubmissions ?? 0} of {totalSubmissions} runs</p>
+            <p className="mt-1 font-sans text-xs text-muted">
+              {stats?.acceptedSubmissions ?? 0} accepted of {totalSubmissions} code attempts
+            </p>
           </div>
         </GlassCard>
       </div>

@@ -46,10 +46,90 @@ const LANGUAGES = [
 ]
 
 const DEFAULT_STARTER_CODES: Record<string, string> = {
-  python: `def solution():\n    # Contest solution here\n    pass\n`,
-  cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n    // Contest solution here\n    return 0;\n}\n`,
-  java: `public class Solution {\n    public static void main(String[] args) {\n        // Contest solution here\n    }\n}\n`,
-  javascript: `function solution() {\n    // Contest solution here\n}\n`,
+  python: `import sys
+
+def solve(data):
+    # data is the raw stdin as a string
+    # Contest solution here
+    return ""
+
+if __name__ == "__main__":
+    print(solve(sys.stdin.read().rstrip()))
+`,
+  cpp: `#include <iostream>
+#include <iterator>
+#include <string>
+using namespace std;
+
+string solve(const string& input) {
+    // input is the raw stdin
+    // Contest solution here
+    return "";
+}
+
+int main() {
+    string input((istreambuf_iterator<char>(cin)), istreambuf_iterator<char>());
+    cout << solve(input) << endl;
+    return 0;
+}
+`,
+  java: `import java.util.Scanner;
+
+public class Main {
+    static String solve(String input) {
+        // input is the raw stdin
+        // Contest solution here
+        return "";
+    }
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        StringBuilder input = new StringBuilder();
+        while (scanner.hasNextLine()) {
+            if (input.length() > 0) input.append(System.lineSeparator());
+            input.append(scanner.nextLine());
+        }
+        System.out.println(solve(input.toString()));
+    }
+}
+`,
+  javascript: `const fs = require('fs')
+
+function solve(input) {
+  // input is the raw stdin as a string
+  // Contest solution here
+  return ''
+}
+
+console.log(solve(fs.readFileSync(0, 'utf8').trimEnd()))
+`,
+}
+
+function getContestStarterCode(problem: ProblemDetail | null, language: string): string {
+  return (
+    problem?.starterCode?.[language] ||
+    DEFAULT_STARTER_CODES[language] ||
+    '// Contest solution\n'
+  )
+}
+
+function starterVersion(code: string): string {
+  let hash = 0
+  for (let i = 0; i < code.length; i++) {
+    hash = (Math.imul(hash, 31) + code.charCodeAt(i)) | 0
+  }
+  return (hash >>> 0).toString(36)
+}
+
+function contestDraftKey(
+  contestId: string,
+  problemId: string,
+  language: string,
+  problem: ProblemDetail | null
+): string {
+  return `mk_contest_${contestId}_${problemId}_${language}_${starterVersion(
+    getContestStarterCode(problem, language)
+  )}`
 }
 
 export default function ContestArenaPage() {
@@ -242,15 +322,14 @@ Input and Output formats follow standard competitive programming conventions.`,
   // Draft loading per problem in contest
   useEffect(() => {
     if (!activePid || !contestId) return
-    const draftKey = `mk_contest_${contestId}_${activePid}_${language}`
-    const saved = localStorage.getItem(draftKey)
+    const defaultCode = getContestStarterCode(currentProblem, language)
+    const saved = localStorage.getItem(
+      contestDraftKey(contestId, activePid, language, currentProblem)
+    )
 
-    const defaultCode =
-      currentProblem?.starterCode?.[language] ||
-      DEFAULT_STARTER_CODES[language] ||
-      '// Contest solution\n'
-
+    let cancelled = false
     const applyDraft = () => {
+      if (cancelled) return
       if (saved !== null) {
         setCode(saved)
         setIsDirty(saved !== defaultCode)
@@ -260,15 +339,20 @@ Input and Output formats follow standard competitive programming conventions.`,
       }
     }
 
-    applyDraft()
+    queueMicrotask(applyDraft)
+    return () => {
+      cancelled = true
+    }
   }, [contestId, activePid, language, currentProblem])
 
   const handleCodeChange = (newVal: string | undefined) => {
     const text = newVal ?? ''
     setCode(text)
     if (!activePid || !contestId) return
-    const draftKey = `mk_contest_${contestId}_${activePid}_${language}`
-    localStorage.setItem(draftKey, text)
+    localStorage.setItem(
+      contestDraftKey(contestId, activePid, language, currentProblem),
+      text
+    )
     setIsDirty(true)
   }
 
@@ -430,7 +514,7 @@ Input and Output formats follow standard competitive programming conventions.`,
   // Left panel problem statement
   const leftPanelContent = (
     <div className="workspace-panel flex h-full flex-col overflow-hidden border-r border-line">
-      <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-2.5">
+      <div className="flex shrink-0 items-center justify-between border-b border-line px-4 py-2.5">
         <span className="text-xs font-mono text-cyan uppercase tracking-wider font-semibold">
           Problem {String.fromCharCode(65 + activeProblemIndex)}: {activeProblemRef?.points ?? 100} Points
         </span>
@@ -460,7 +544,7 @@ Input and Output formats follow standard competitive programming conventions.`,
             </div>
 
             {currentProblem.constraints && (
-              <div className="flex flex-col gap-2 rounded-card border border-white/5 bg-white/[0.02] p-4">
+              <div className="flex flex-col gap-2 rounded-card border border-line bg-surface-soft/50 p-4">
                 <h3 className="font-semibold text-xs uppercase tracking-wider text-muted">
                   Constraints
                 </h3>
@@ -478,7 +562,7 @@ Input and Output formats follow standard competitive programming conventions.`,
                 {currentProblem.sampleTestCases.map((tc, idx) => (
                   <div
                     key={tc.id || idx}
-                    className="flex flex-col gap-2 rounded-card border border-white/10 bg-white/5 p-4"
+                    className="flex flex-col gap-2 rounded-card border border-line bg-surface-soft p-4"
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-cyan font-mono">
@@ -527,7 +611,7 @@ Input and Output formats follow standard competitive programming conventions.`,
         <select
           value={language}
           onChange={(e) => setLanguage(e.target.value)}
-          className="rounded-ctl border border-white/10 bg-white/5 px-3 py-1 text-xs font-mono text-ink focus-visible:border-cyan focus-visible:outline-none"
+          className="rounded-ctl border border-line bg-surface-soft px-3 py-1 text-xs font-mono text-ink focus-visible:border-cyan focus-visible:outline-none"
         >
           {LANGUAGES.map((l) => (
             <option key={l.id} value={l.id} className="bg-base text-ink">
@@ -548,9 +632,12 @@ Input and Output formats follow standard competitive programming conventions.`,
           variant="ghost"
           size="sm"
           onClick={() => {
-            const defCode =
-              currentProblem?.starterCode?.[language] || DEFAULT_STARTER_CODES[language] || ''
-            setCode(defCode)
+            setCode(getContestStarterCode(currentProblem, language))
+            if (activePid && contestId) {
+              localStorage.removeItem(
+                contestDraftKey(contestId, activePid, language, currentProblem)
+              )
+            }
             setIsDirty(false)
           }}
           className="h-8 px-2.5 text-xs text-muted hover:text-ink"
@@ -570,7 +657,7 @@ Input and Output formats follow standard competitive programming conventions.`,
               size="sm"
               onClick={() => handleExecute('run')}
               disabled={executionState.status === 'PENDING' || executionState.status === 'RUNNING'}
-              className="h-8 border-white/15 bg-white/5 text-xs text-ink hover:bg-white/10"
+              className="h-8 border-line bg-surface-soft text-xs text-ink hover:bg-surface"
             >
               <Play className="size-3 mr-1 text-cyan fill-cyan" />
               Run
@@ -599,7 +686,7 @@ Input and Output formats follow standard competitive programming conventions.`,
             onClick={() => setConsoleTab('testcases')}
             className={cn(
               'rounded-md px-3 py-1 text-xs font-medium transition-colors',
-              consoleTab === 'testcases' ? 'bg-white/10 text-cyan' : 'text-muted hover:text-ink'
+              consoleTab === 'testcases' ? 'bg-surface-soft text-cyan border border-cyan/30' : 'text-muted hover:text-ink'
             )}
           >
             Sample Tests
@@ -608,7 +695,7 @@ Input and Output formats follow standard competitive programming conventions.`,
             onClick={() => setConsoleTab('output')}
             className={cn(
               'rounded-md px-3 py-1 text-xs font-medium transition-colors',
-              consoleTab === 'output' ? 'bg-white/10 text-cyan' : 'text-muted hover:text-ink'
+              consoleTab === 'output' ? 'bg-surface-soft text-cyan border border-cyan/30' : 'text-muted hover:text-ink'
             )}
           >
             Execution Verdict

@@ -19,6 +19,7 @@ import {
 } from '../models/Submission.js';
 import { TestCase } from '../models/TestCase.js';
 import { enqueueSubmission } from '../queues/submissionQueue.js';
+import { getIO } from '../config/socket.js';
 import { HttpError } from '../utils/http.js';
 import {
   getPagination,
@@ -31,6 +32,14 @@ import {
 
 const MAX_SOURCE_CODE_BYTES = 100 * 1024;
 const MAX_ACTIVE_SUBMISSIONS_PER_USER = 5;
+
+function hasCppEntryPoint(sourceCode: string): boolean {
+  const code = sourceCode.replace(
+    /\/\*[\s\S]*?\*\/|\/\/[^\r\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g,
+    ' '
+  );
+  return /\bint\s+main\s*\(/.test(code);
+}
 
 function parseMode(value: unknown): SubmissionMode {
   if (
@@ -132,6 +141,14 @@ async function handleCreateSubmission(
     min: 1,
     trim: false,
   });
+
+  if (language === 'cpp' && !hasCppEntryPoint(sourceCode)) {
+    throw new HttpError(
+      400,
+      'CPP_ENTRY_POINT_REQUIRED',
+      'C++ source must define an entry point: int main() { ... }. Restore the C++ starter code or add main() before submitting.'
+    );
+  }
 
   if (Buffer.byteLength(sourceCode, 'utf8') > MAX_SOURCE_CODE_BYTES) {
     throw new HttpError(
@@ -262,6 +279,11 @@ async function handleCreateSubmission(
     sourceCode,
     mode,
     verdict: 'PENDING',
+  });
+
+  getIO()?.to(`user:${authUser.id}`).emit('user:stats:update', {
+    reason: 'submission-created',
+    submissionId: submission.id,
   });
 
   try {

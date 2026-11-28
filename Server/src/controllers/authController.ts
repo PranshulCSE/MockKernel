@@ -4,6 +4,7 @@ import { createHash, randomInt } from 'node:crypto';
 import nodemailer from 'nodemailer';
 import { User } from '../models/User.js';
 import { getEnvConfig } from '../config/env.js';
+import { getIO } from '../config/socket.js';
 import { getAuthUser } from '../middleware/auth.js';
 import {
   googleLogin as googleLoginService,
@@ -59,6 +60,7 @@ export async function googleLogin(req: Request, res: Response): Promise<void> {
 
   const idToken = readString(body.idToken, 'idToken', { min: 10 });
   const payload = await googleLoginService(idToken);
+  getIO()?.to('superadmins').emit('admin:users:update', { reason: 'google-sign-in' });
   res.status(200).json({ data: payload });
 }
 

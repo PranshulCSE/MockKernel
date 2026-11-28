@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from 'node:child_process';
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -11,6 +11,14 @@ export interface LocalRunnerOptions {
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000;
+
+function getCppCompiler(): string {
+  for (const compiler of ['clang++', 'g++']) {
+    const check = spawnSync(compiler, ['--version'], { stdio: 'ignore' });
+    if (!check.error && check.status === 0) return compiler;
+  }
+  return 'clang++';
+}
 
 function normalizeOutput(output: string): string {
   return output
@@ -173,7 +181,7 @@ export class LocalRunnerService {
 
           // Compile C++
           const compile = await runProcess(
-            'clang++',
+            getCppCompiler(),
             ['-O2', '-std=c++17', 'solution.cpp', '-o', 'solution.out'],
             tempDir,
             '',

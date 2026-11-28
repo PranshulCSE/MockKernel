@@ -28,10 +28,63 @@ const ALL_LANGUAGES: SupportedLanguage[] = ['python', 'cpp', 'java', 'javascript
 const DIFFICULTIES: ProblemDifficulty[] = ['Easy', 'Medium', 'Hard']
 
 const defaultStarterCodes: Record<SupportedLanguage, string> = {
-  python: 'def solution():\n    # Write your solution here\n    pass\n',
-  cpp: '#include <iostream>\nusing namespace std;\n\nint main() {\n    // Write your solution here\n    return 0;\n}\n',
-  java: 'public class Solution {\n    public static void main(String[] args) {\n        // Write your solution here\n    }\n}\n',
-  javascript: 'function solution() {\n    // Write your solution here\n}\n',
+  python: `import sys
+
+def solve(data):
+    # data is the raw stdin as a string
+    # Write your solution here
+    return ""
+
+if __name__ == "__main__":
+    print(solve(sys.stdin.read().rstrip()))
+`,
+  cpp: `#include <iostream>
+#include <iterator>
+#include <string>
+using namespace std;
+
+string solve(const string& input) {
+    // input is the raw stdin
+    // Write your solution here
+    return "";
+}
+
+int main() {
+    string input((istreambuf_iterator<char>(cin)), istreambuf_iterator<char>());
+    cout << solve(input) << endl;
+    return 0;
+}
+`,
+  java: `import java.util.Scanner;
+
+public class Main {
+    static String solve(String input) {
+        // input is the raw stdin
+        // Write your solution here
+        return "";
+    }
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        StringBuilder input = new StringBuilder();
+        while (scanner.hasNextLine()) {
+            if (input.length() > 0) input.append(System.lineSeparator());
+            input.append(scanner.nextLine());
+        }
+        System.out.println(solve(input.toString()));
+    }
+}
+`,
+  javascript: `const fs = require('fs')
+
+function solve(input) {
+  // input is the raw stdin as a string
+  // Write your solution here
+  return ''
+}
+
+console.log(solve(fs.readFileSync(0, 'utf8').trimEnd()))
+`,
 }
 
 export default function AdminProblemsPage() {
@@ -260,7 +313,7 @@ export default function AdminProblemsPage() {
           {row.supportedLanguages?.map((lang) => (
             <span
               key={lang}
-              className="rounded-full bg-white/5 border border-white/10 px-2 py-0.5 text-[10px] font-mono text-muted uppercase"
+              className="rounded-full bg-surface-soft border border-line px-2 py-0.5 text-[10px] font-mono text-muted uppercase"
             >
               {lang}
             </span>
@@ -320,7 +373,7 @@ export default function AdminProblemsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && void loadProblems(1, search)}
-            className="w-full rounded-full border border-white/10 bg-white/5 py-2 pl-10 pr-4 text-xs font-sans text-ink placeholder-muted focus:border-cyan focus:outline-none focus:ring-1 focus:ring-cyan"
+            className="w-full rounded-full border border-line bg-surface-soft py-2 pl-10 pr-4 text-xs font-sans text-ink placeholder-muted focus:border-cyan focus:outline-none focus:ring-1 focus:ring-cyan"
           />
         </div>
 
@@ -399,7 +452,7 @@ export default function AdminProblemsPage() {
               <select
                 value={formDifficulty}
                 onChange={(e) => setFormDifficulty(e.target.value as ProblemDifficulty)}
-                className="h-11 rounded-ctl border border-white/10 bg-white/5 px-3 font-sans text-sm text-ink focus:border-cyan focus:outline-none"
+                className="h-11 rounded-ctl border border-line bg-surface-soft px-3 font-sans text-sm text-ink focus:border-cyan focus:outline-none"
               >
                 {DIFFICULTIES.map((d) => (
                   <option key={d} value={d} className="bg-base text-ink">
@@ -411,14 +464,14 @@ export default function AdminProblemsPage() {
           </div>
 
           {/* Published Toggle & Languages */}
-          <div className="flex flex-wrap items-center justify-between gap-4 rounded-ctl border border-white/10 bg-white/5 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-ctl border border-line bg-surface-soft p-4">
             <div className="flex items-center gap-3">
               <input
                 type="checkbox"
                 id="isPublished"
                 checked={formIsPublished}
                 onChange={(e) => setFormIsPublished(e.target.checked)}
-                className="size-4 rounded border-white/20 bg-base text-cyan focus:ring-cyan"
+                className="size-4 rounded border-line bg-surface text-cyan focus:ring-cyan"
               />
               <label htmlFor="isPublished" className="font-sans text-xs font-medium text-ink cursor-pointer">
                 Publish to student catalog immediately
@@ -441,7 +494,7 @@ export default function AdminProblemsPage() {
                     className={`rounded-full px-2.5 py-1 text-[11px] font-mono uppercase transition-colors ${
                       isSelected
                         ? 'bg-cyan/20 border border-cyan/40 text-cyan'
-                        : 'bg-white/5 border border-white/10 text-muted'
+                        : 'bg-surface border border-line text-muted'
                     }`}
                   >
                     {lang}
@@ -461,7 +514,7 @@ export default function AdminProblemsPage() {
               value={formStatement}
               onChange={(e) => setFormStatement(e.target.value)}
               placeholder="Provide a detailed description of the challenge, input/output requirements, etc."
-              className="w-full rounded-ctl border border-white/10 bg-black/30 p-3 font-sans text-xs text-ink placeholder-muted focus:border-cyan focus:outline-none focus:ring-1 focus:ring-cyan resize-y"
+              className="w-full rounded-ctl border border-line bg-surface-soft p-3 font-sans text-xs text-ink placeholder-muted focus:border-cyan focus:outline-none focus:ring-1 focus:ring-cyan resize-y"
             />
           </div>
 
@@ -473,13 +526,13 @@ export default function AdminProblemsPage() {
               value={formConstraints}
               onChange={(e) => setFormConstraints(e.target.value)}
               placeholder="e.g. 1 <= n <= 10^5, time limit 1000ms"
-              className="w-full rounded-ctl border border-white/10 bg-black/30 p-3 font-sans text-xs text-ink placeholder-muted focus:border-cyan focus:outline-none focus:ring-1 focus:ring-cyan"
+              className="w-full rounded-ctl border border-line bg-surface-soft p-3 font-sans text-xs text-ink placeholder-muted focus:border-cyan focus:outline-none focus:ring-1 focus:ring-cyan"
             />
           </div>
 
           {/* Starter Code Editor Per Language */}
-          <div className="flex flex-col gap-2 rounded-ctl border border-white/10 bg-white/5 p-4">
-            <div className="flex items-center justify-between pb-2 border-b border-white/10">
+          <div className="flex flex-col gap-2 rounded-ctl border border-line bg-surface-soft p-4">
+            <div className="flex items-center justify-between pb-2 border-b border-line">
               <span className="font-display text-xs font-semibold text-ink">
                 Starter Code Editor
               </span>
@@ -500,13 +553,13 @@ export default function AdminProblemsPage() {
                   [activeCodeLang as SupportedLanguage]: e.target.value,
                 }))
               }
-              className="w-full font-mono text-xs text-ink bg-black/50 border border-white/10 rounded-ctl p-3 focus:border-cyan focus:outline-none resize-y"
+              className="w-full font-mono text-xs text-ink bg-surface border border-line rounded-ctl p-3 focus:border-cyan focus:outline-none resize-y"
             />
           </div>
 
           {/* Interactive Test Cases Sub-Editor */}
-          <div className="flex flex-col gap-3 rounded-ctl border border-white/10 bg-white/5 p-4">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+          <div className="flex flex-col gap-3 rounded-ctl border border-line bg-surface-soft p-4">
+            <div className="flex items-center justify-between border-b border-line pb-3">
               <div className="flex items-center gap-2">
                 <FileText className="size-4 text-cyan" />
                 <span className="font-display text-sm font-semibold text-ink">
@@ -527,7 +580,7 @@ export default function AdminProblemsPage() {
               {formTestCases.map((tc, idx) => (
                 <div
                   key={idx}
-                  className="rounded-ctl border border-white/10 bg-black/20 p-3.5 flex flex-col gap-3"
+                  className="rounded-ctl border border-line bg-surface/80 p-3.5 flex flex-col gap-3"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -537,7 +590,7 @@ export default function AdminProblemsPage() {
                           type="checkbox"
                           checked={tc.isSample}
                           onChange={(e) => updateTestCase(idx, { isSample: e.target.checked })}
-                          className="size-3.5 rounded border-white/20 bg-base text-cyan"
+                          className="size-3.5 rounded border-line bg-surface text-cyan"
                         />
                         <span>Is Sample (Visible to students in description)</span>
                       </label>
@@ -561,7 +614,7 @@ export default function AdminProblemsPage() {
                         value={tc.input}
                         onChange={(e) => updateTestCase(idx, { input: e.target.value })}
                         placeholder="e.g. 5\n1 2 3 4 5"
-                        className="w-full font-mono text-xs text-ink bg-black/40 border border-white/10 rounded-ctl p-2 focus:border-cyan focus:outline-none"
+                        className="w-full font-mono text-xs text-ink bg-surface border border-line rounded-ctl p-2 focus:border-cyan focus:outline-none"
                       />
                     </div>
                     <div>
@@ -571,7 +624,7 @@ export default function AdminProblemsPage() {
                         value={tc.expectedOutput}
                         onChange={(e) => updateTestCase(idx, { expectedOutput: e.target.value })}
                         placeholder="e.g. 15"
-                        className="w-full font-mono text-xs text-ink bg-black/40 border border-white/10 rounded-ctl p-2 focus:border-cyan focus:outline-none"
+                        className="w-full font-mono text-xs text-ink bg-surface border border-line rounded-ctl p-2 focus:border-cyan focus:outline-none"
                       />
                     </div>
                   </div>
@@ -586,7 +639,7 @@ export default function AdminProblemsPage() {
                         value={tc.explanation || ''}
                         onChange={(e) => updateTestCase(idx, { explanation: e.target.value })}
                         placeholder="Explain the sample transformation..."
-                        className="w-full font-sans text-xs text-ink bg-black/40 border border-white/10 rounded-ctl px-3 py-1.5 focus:border-cyan focus:outline-none"
+                        className="w-full font-sans text-xs text-ink bg-surface border border-line rounded-ctl px-3 py-1.5 focus:border-cyan focus:outline-none"
                       />
                     </div>
                   )}

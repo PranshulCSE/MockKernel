@@ -51,6 +51,7 @@ describe('Judge0Service', () => {
         expected_output: '',
       })
     );
+    expect(getMock).toHaveBeenCalledWith('/submissions/tok-empty-1?base64_encoded=true');
     expect(result).toEqual({
       token: 'tok-empty-1',
       verdict: 'ACCEPTED',
@@ -73,7 +74,7 @@ describe('Judge0Service', () => {
         data: {
           token: 'tok-poll',
           status: { id: 6, description: 'Compilation Error' },
-          compile_output: 'SyntaxError: invalid syntax',
+          compile_output: 'U3ludGF4RXJyb3I6IGludmFsaWQgc3ludGF4',
         },
       });
 

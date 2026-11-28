@@ -125,6 +125,7 @@ export function getWorkerEnvConfig(): WorkerEnvConfig {
   const rawConcurrency = Number(process.env.WORKER_CONCURRENCY);
   const workerConcurrency =
     Number.isInteger(rawConcurrency) && rawConcurrency >= 1 ? rawConcurrency : 5;
+  const judge0ApiKey = process.env.JUDGE0_API_KEY?.trim() || process.env.JUDGE0_AUTH_TOKEN?.trim();
 
   return {
     nodeEnv: process.env.NODE_ENV || 'development',
@@ -134,9 +135,7 @@ export function getWorkerEnvConfig(): WorkerEnvConfig {
     ...(process.env.REDIS_PASSWORD ? { redisPassword: process.env.REDIS_PASSWORD } : {}),
     ...(process.env.REDIS_URL?.trim() ? { redisUrl: process.env.REDIS_URL.trim() } : {}),
     judge0ApiUrl: (process.env.JUDGE0_API_URL?.trim() || 'http://localhost:2358').replace(/\/+$/, ''),
-    ...(process.env.JUDGE0_API_KEY?.trim()
-      ? { judge0ApiKey: process.env.JUDGE0_API_KEY.trim() }
-      : {}),
+    ...(judge0ApiKey ? { judge0ApiKey } : {}),
     submissionQueueName: process.env.SUBMISSION_QUEUE_NAME?.trim() || 'submission-queue',
     pollIntervalMs,
     maxPollAttempts,

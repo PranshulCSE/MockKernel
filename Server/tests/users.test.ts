@@ -89,13 +89,15 @@ describe('Student stats endpoint', () => {
       averageInterviewScore: 7.7,
     });
 
-    expect(submissionAggregate).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({
-          $match: expect.objectContaining({ user: userId, mode: 'submit' }),
-        }),
-      ])
-    );
+    const pipeline = submissionAggregate.mock.calls[0]?.[0] as Array<{
+      $match?: Record<string, unknown>;
+      $facet?: Record<string, Array<{ $match?: Record<string, unknown> }>>;
+    }>;
+    expect(pipeline[0]?.$match).toEqual({ user: userId });
+    expect(pipeline[1]?.$facet?.solvedProblems?.[0]?.$match).toEqual({
+      mode: 'submit',
+      verdict: 'ACCEPTED',
+    });
     expect(contestCount).toHaveBeenCalledWith({ user: userId });
   });
 
