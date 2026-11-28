@@ -79,7 +79,7 @@ export interface ContestPayload {
   description: string
   startTime: string
   endTime: string
-  problems: { problem: string; points: number }[]
+  problems: { problemId: string; points: number; order: number }[]
 }
 
 export interface FlaggedSubmissionItem {
