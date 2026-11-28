@@ -179,9 +179,10 @@ export default function AdminContestsPage() {
         description: formDescription.trim(),
         startTime: new Date(formStartTime).toISOString(),
         endTime: new Date(formEndTime).toISOString(),
-        problems: selectedProblems.map((p) => ({
-          problem: p.problemId,
+        problems: selectedProblems.map((p, index) => ({
+          problemId: p.problemId,
           points: p.points,
+          order: index,
         })),
       }
       if (editingContestId) {
